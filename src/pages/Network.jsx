@@ -1,0 +1,352 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Users, Search, Radio, Wifi, Shield, Zap, Activity, Hexagon, 
+  UserPlus, CheckCircle, XCircle, Keyboard, Cpu 
+} from 'lucide-react';
+import Navbar from '../components/Navbar';
+import { useFriends } from '../contexts/FriendsContext';
+import { useAuth } from '../contexts/AuthContext';
+
+  const HexNode = ({ friend, center = false, currentUser }) => {
+    const statusColor = center ? 'bg-primary' 
+      : friend?.isOnline ? 'bg-green-500' 
+      : 'bg-base-muted';
+      
+    return (
+      <motion.div 
+        layout
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+        whileHover={{ scale: 1.1, zIndex: 10 }}
+        className="relative w-32 h-32 flex items-center justify-center group"
+      >
+        {/* Hexagon Shape */}
+        <div className={`absolute inset-0 hex-mask ${center ? 'bg-primary/20 border-2 border-primary' : 'bg-base-content/5 hover:bg-base-content/10'} transition-colors duration-300`}></div>
+        
+        {/* Border Glow */}
+        <div className="absolute inset-0 hex-mask border border-base-content/10 group-hover:border-primary/50 transition-colors"></div>
+
+        {/* Content */}
+        <div className="relative z-10 flex flex-col items-center text-center p-2">
+           <div className="relative">
+             <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-base-content/20 mb-2">
+                <div className={`w-full h-full bg-gradient-to-br ${center ? 'from-primary to-purple-600' : 'from-gray-700 to-gray-900'}`}>
+                   {/* Avatar Placeholder */}
+                   <Users className="w-full h-full p-3 text-base-content/50" />
+                </div>
+             </div>
+             {/* Status Dot */}
+             {!center && (
+                <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-base-dark ${statusColor} shadow-[0_0_10px_currentColor]`}></div>
+             )}
+           </div>
+           
+           <span className={`text-xs font-bold truncate max-w-[80px] ${center ? 'text-primary-glow' : 'text-base-content'}`}>
+             {center ? currentUser?.username : friend.username}
+           </span>
+           
+           <span className={`text-[9px] font-mono -mt-0.5 ${center ? 'text-primary' : 'text-base-muted/50'}`}>
+             {center ? currentUser?.netId : friend?.netId || '###-###'}
+           </span>
+           
+           {!center && (
+             <span className="text-[10px] text-base-muted font-mono mt-0.5">{friend.rank || 'Unranked'}</span>
+           )}
+        </div>
+      </motion.div>
+    );
+  };
+
+const Network = () => {
+  const { friends, loading, sendRequest, acceptRequest, removeFriend, fetchFriends } = useFriends();
+  const { user } = useAuth();
+  
+  const [activeTab, setActiveTab] = useState('grid'); // grid, requests, add
+  const [searchTerm, setSearchTerm] = useState('');
+  const [addUsername, setAddUsername] = useState('');
+  const [scanStatus, setScanStatus] = useState('idle'); // idle, scanning, found, error
+  const [scanMsg, setScanMsg] = useState('');
+  
+  // For "Typing to Accept"
+  const [confirmInput, setConfirmInput] = useState('');
+  const [targetRequest, setTargetRequest] = useState(null);
+
+  const acceptedFriends = friends.filter(f => f.status === 'accepted');
+  const pendingRequests = friends.filter(f => f.status === 'pending_received');
+  const sentRequests = friends.filter(f => f.status === 'pending_sent');
+
+  const handleSendRequest = async (e) => {
+    e.preventDefault();
+    setScanStatus('scanning');
+    
+    // Simulate scan delay for effect
+    setTimeout(async () => {
+      const result = await sendRequest(addUsername);
+      if (result.success) {
+        setScanStatus('found');
+        setScanMsg(`Uplink established: Signal sent to ${addUsername}`);
+        setAddUsername('');
+      } else {
+        setScanStatus('error');
+        setScanMsg(`Connection failed: ${result.msg}`);
+      }
+      setTimeout(() => setScanStatus('idle'), 3000);
+    }, 1500);
+  };
+
+  const handleAcceptTyping = (e) => {
+    const val = e.target.value;
+    setConfirmInput(val);
+    if (val === targetRequest.username) {
+       // Auto-accept on match
+       acceptRequest(targetRequest.id);
+       setTargetRequest(null);
+       setConfirmInput('');
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-base-dark text-base-content relative overflow-hidden">
+      <Navbar />
+      
+      {/* Background Mesh */}
+      <div className="absolute inset-0 bg-hex-mesh opacity-20 pointer-events-none"></div>
+
+      <div className="pt-24 pb-12 px-6 max-w-7xl mx-auto h-[calc(100vh-100px)] flex flex-col">
+        
+        {/* Header / Tabs */}
+        <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-6">
+          <div>
+             <h1 className="text-3xl font-bold flex items-center gap-3">
+               <Activity className="text-primary" /> 
+               <span className="text-glow">Neural Network</span>
+             </h1>
+             <p className="text-base-muted text-sm font-mono mt-1">
+               Uplink Status: <span className="text-green-400">ONLINE</span> • Nodes: {acceptedFriends.length}
+             </p>
+          </div>
+
+          <div className="flex bg-base-navy rounded-xl p-1 border border-base-content/10">
+             <button 
+               onClick={() => setActiveTab('grid')}
+               className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${activeTab === 'grid' ? 'bg-primary text-white shadow-lg' : 'text-base-muted hover:text-base-content'}`}
+             >
+               <Hexagon className="w-4 h-4" /> Grid
+             </button>
+             <button 
+               onClick={() => setActiveTab('requests')}
+               className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${activeTab === 'requests' ? 'bg-primary text-white shadow-lg' : 'text-base-muted hover:text-base-content'}`}
+             >
+               <Radio className="w-4 h-4" /> 
+               Transmissions
+               {pendingRequests.length > 0 && (
+                 <span className="bg-red-500 text-white text-[10px] px-1.5 rounded-full">{pendingRequests.length}</span>
+               )}
+             </button>
+             <button 
+               onClick={() => setActiveTab('add')}
+               className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${activeTab === 'add' ? 'bg-primary text-white shadow-lg' : 'text-base-muted hover:text-base-content'}`}
+             >
+               <UserPlus className="w-4 h-4" /> Uplink
+             </button>
+          </div>
+        </div>
+
+        {/* Content Area */}
+        <div className="flex-1 relative">
+           <AnimatePresence mode='wait'>
+             
+             {/* GRID VIEW */}
+             {activeTab === 'grid' && (
+               <motion.div 
+                 key="grid"
+                 initial={{ opacity: 0, scale: 0.9 }}
+                 animate={{ opacity: 1, scale: 1 }}
+                 exit={{ opacity: 0, scale: 0.9 }}
+                 className="h-full flex items-center justify-center overflow-auto"
+               >
+                  {/* Hex Grid Layout Logic - simplified visual clustering */}
+                  <div className="flex flex-wrap justify-center gap-4 max-w-4xl">
+                     {/* User Center Node */}
+                     <HexNode center currentUser={user} />
+                     
+                     {acceptedFriends.map((friend) => (
+                        <HexNode key={friend.id} friend={friend} currentUser={user} />
+                     ))}
+                     
+                     {/* Empty Slots for effect */}
+                     {[...Array(6 - (acceptedFriends.length % 6))].map((_, i) => (
+                        <div key={`empty-${i}`} className="w-32 h-32 opacity-10 hex-mask bg-base-content/20 flex items-center justify-center">
+                           <Wifi className="w-6 h-6" />
+                        </div>
+                     ))}
+                  </div>
+               </motion.div>
+             )}
+
+             {/* REQUESTS VIEW */}
+             {activeTab === 'requests' && (
+               <motion.div 
+                 key="requests"
+                 initial={{ opacity: 0, x: 20 }}
+                 animate={{ opacity: 1, x: 0 }}
+                 exit={{ opacity: 0, x: -20 }}
+                 className="max-w-2xl mx-auto"
+               >
+                  {pendingRequests.length === 0 && sentRequests.length === 0 ? (
+                     <div className="text-center py-20 opacity-50">
+                        <Radio className="w-16 h-16 mx-auto mb-4" />
+                        <h3 className="text-xl font-bold">No Incoming Signals</h3>
+                        <p>Your frequency is clear.</p>
+                     </div>
+                  ) : (
+                    <div className="space-y-6">
+                       {/* Incoming */}
+                       {pendingRequests.length > 0 && (
+                         <div>
+                            <h3 className="text-primary font-mono text-sm uppercase tracking-widest mb-4 flex items-center gap-2">
+                               <span className="w-2 h-2 bg-primary rounded-full animate-pulse"></span>
+                               Incoming Handshakes
+                            </h3>
+                            <div className="space-y-3">
+                               {pendingRequests.map(req => (
+                                  <div key={req.id} className="glass-card p-4 rounded-xl border border-primary/30 flex items-center justify-between">
+                                     <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-full bg-base-content/10 flex items-center justify-center">
+                                           <Users className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                           <div className="font-bold text-lg">{req.username}</div>
+                                           <div className="text-xs text-base-muted font-mono">{req.rank} Division</div>
+                                        </div>
+                                     </div>
+                                     
+                                     {targetRequest?.id === req.id ? (
+                                        <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right">
+                                           <div className="relative">
+                                              <Keyboard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary" />
+                                              <input 
+                                                autoFocus
+                                                type="text" 
+                                                value={confirmInput}
+                                                onChange={handleAcceptTyping}
+                                                placeholder={`Type "${req.username}"`}
+                                                className="bg-base-navy border border-primary text-white pl-9 pr-3 py-2 rounded-lg text-sm font-mono w-48 focus:outline-none focus:ring-1 focus:ring-primary"
+                                              />
+                                           </div>
+                                           <button onClick={() => setTargetRequest(null)} className="p-2 hover:bg-white/10 rounded-lg">
+                                              <XCircle className="w-5 h-5 text-red-400" />
+                                           </button>
+                                        </div>
+                                     ) : (
+                                        <div className="flex gap-2">
+                                           <button 
+                                             onClick={() => setTargetRequest(req)}
+                                             className="px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg text-sm font-bold flex items-center gap-2"
+                                           >
+                                              <Keyboard className="w-4 h-4" /> Accept
+                                           </button>
+                                           <button 
+                                              onClick={() => removeFriend(req.id)}
+                                              className="p-2 hover:bg-white/10 rounded-lg border border-white/10 text-base-muted hover:text-red-400 transition-colors"
+                                           >
+                                              <XCircle className="w-5 h-5" />
+                                           </button>
+                                        </div>
+                                     )}
+                                  </div>
+                               ))}
+                            </div>
+                         </div>
+                       )}
+
+                       {/* Sent */}
+                       {sentRequests.length > 0 && (
+                         <div className="opacity-60">
+                            <h3 className="text-base-muted font-mono text-sm uppercase tracking-widest mb-4">Outgoing Signals</h3>
+                            <div className="space-y-2">
+                               {sentRequests.map(req => (
+                                  <div key={req.id} className="p-3 bg-base-content/5 rounded-lg flex items-center justify-between">
+                                     <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-full bg-base-content/10 flex items-center justify-center">
+                                           <Wifi className="w-4 h-4 animate-pulse" />
+                                        </div>
+                                        <span className="font-mono text-sm">{req.username}</span>
+                                     </div>
+                                     <span className="text-xs text-base-muted">Awaiting Response...</span>
+                                  </div>
+                               ))}
+                            </div>
+                         </div>
+                       )}
+                    </div>
+                  )}
+               </motion.div>
+             )}
+
+             {/* ADD / UPLINK VIEW */}
+             {activeTab === 'add' && (
+               <motion.div 
+                 key="add"
+                 initial={{ opacity: 0, scale: 0.95 }}
+                 animate={{ opacity: 1, scale: 1 }}
+                 exit={{ opacity: 0, scale: 0.95 }}
+                 className="flex flex-col items-center justify-center h-full"
+               >
+                  <div className="w-full max-w-md">
+                     <div className={`glass-card p-8 rounded-2xl border transition-colors duration-500 ${scanStatus === 'error' ? 'border-red-500/50' : scanStatus === 'found' ? 'border-green-500/50' : 'border-primary/30'}`}>
+                        <div className="text-center mb-8">
+                           <div className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-4 ${scanStatus === 'scanning' ? 'bg-primary/20 animate-pulse' : 'bg-base-content/5'}`}>
+                              {scanStatus === 'scanning' ? <Wifi className="w-10 h-10 text-primary animate-spin" /> : 
+                               scanStatus === 'found' ? <CheckCircle className="w-10 h-10 text-green-500" /> :
+                               scanStatus === 'error' ? <XCircle className="w-10 h-10 text-red-500" /> :
+                               <Search className="w-10 h-10 text-base-muted" />
+                              }
+                           </div>
+                           <h2 className="text-2xl font-bold mb-2">Establish Frequency Uplink</h2>
+                           <p className="text-base-muted text-sm">Enter the target's Net-Signature (Username or Net-ID: XXX-XXX) to broadcast a handshake request.</p>
+                        </div>
+
+                        <form onSubmit={handleSendRequest} className="relative">
+                           <input 
+                             type="text" 
+                             value={addUsername}
+                             onChange={(e) => setAddUsername(e.target.value)}
+                             placeholder="Username or Net-ID (123-456)..."
+                             className="w-full bg-base-navy border border-base-content/20 rounded-xl px-4 py-4 pl-12 text-lg font-mono focus:ring-2 focus:ring-primary focus:border-primary outline-none text-white"
+                             disabled={scanStatus === 'scanning'}
+                           />
+                           <Cpu className="absolute left-4 top-1/2 -translate-y-1/2 text-base-muted w-5 h-5" />
+                           
+                           <button 
+                             type="submit"
+                             disabled={!addUsername || scanStatus === 'scanning'}
+                             className="w-full mt-4 py-4 bg-primary hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all"
+                           >
+                             {scanStatus === 'scanning' ? 'Scanning Network...' : 'Broadcast Handshake'}
+                           </button>
+                        </form>
+
+                        {scanMsg && (
+                           <motion.div 
+                             initial={{ opacity: 0, y: 10 }}
+                             animate={{ opacity: 1, y: 0 }}
+                             className={`mt-4 text-center text-sm font-mono ${scanStatus === 'error' ? 'text-red-400' : 'text-green-400'}`}
+                           >
+                              {scanMsg}
+                           </motion.div>
+                        )}
+                     </div>
+                  </div>
+               </motion.div>
+             )}
+
+           </AnimatePresence>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Network;
