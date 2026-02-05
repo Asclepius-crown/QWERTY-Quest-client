@@ -488,6 +488,16 @@ const Play = () => {
         alert('Please log in to play multiplayer races');
         return;
       }
+    } else if (mode === 'private-race') {
+      if (user && socket && location.state?.roomId) {
+        socket.emit('join-private', { 
+           userId: user.id, 
+           roomId: location.state.roomId 
+        });
+        setGameState('matching'); // Reuse matching/waiting UI until race starts
+      } else {
+        alert('Invalid private race session');
+      }
     } else if (mode === 'custom') {
       if (customText.trim().length < 10) {
         alert('Please enter at least 10 characters for custom text.');
@@ -500,6 +510,7 @@ const Play = () => {
       setStartTime(Date.now());
     }
   };
+
 
   const handleKeyDown = (e) => {
     if (isNoBackspace && e.key === 'Backspace') {
@@ -816,7 +827,7 @@ const Play = () => {
                   className="px-8 py-4 bg-primary hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed text-base-content rounded-xl font-bold text-xl shadow-lg transition-all flex items-center gap-3"
                 >
                   <PlayIcon className="w-6 h-6" />
-                  {loading ? 'Loading...' : mode === 'quick-race' ? 'Find Match' : mode === 'github' ? 'Fetch Code' : mode === 'chaos' ? 'Start Chaos' : 'Start Race'}
+                  {loading ? 'Loading...' : mode === 'quick-race' ? 'Find Match' : mode === 'private-race' ? 'Join Lobby' : mode === 'github' ? 'Fetch Code' : mode === 'chaos' ? 'Start Chaos' : 'Start Race'}
                 </button>
                 <button
                   onClick={fetchHistory}

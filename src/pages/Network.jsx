@@ -2,13 +2,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Users, Search, Radio, Wifi, Shield, Zap, Activity, Hexagon, 
-  UserPlus, CheckCircle, XCircle, Keyboard, Cpu 
+  UserPlus, CheckCircle, XCircle, Keyboard, Cpu, Sword 
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import io from 'socket.io-client';
 import Navbar from '../components/Navbar';
 import { useFriends } from '../contexts/FriendsContext';
 import { useAuth } from '../contexts/AuthContext';
 
-  const HexNode = ({ friend, center = false, currentUser }) => {
+  const HexNode = ({ friend, center = false, currentUser, onChallenge }) => {
     const statusColor = center ? 'bg-primary' 
       : friend?.isOnline ? 'bg-green-500' 
       : 'bg-base-muted';
@@ -53,6 +55,15 @@ import { useAuth } from '../contexts/AuthContext';
            {!center && (
              <span className="text-[10px] text-base-muted font-mono mt-0.5">{friend.rank || 'Unranked'}</span>
            )}
+           
+           {!center && onChallenge && (
+             <button
+               onClick={() => onChallenge(friend)}
+               className="absolute -bottom-8 opacity-0 group-hover:opacity-100 transition-all bg-primary hover:bg-primary-hover text-white text-[10px] font-bold py-1 px-3 rounded-full flex items-center gap-1 shadow-lg z-20"
+             >
+               <Sword className="w-3 h-3" /> Challenge
+             </button>
+           )}
         </div>
       </motion.div>
     );
@@ -61,6 +72,7 @@ import { useAuth } from '../contexts/AuthContext';
 const Network = () => {
   const { friends, loading, sendRequest, acceptRequest, removeFriend, fetchFriends } = useFriends();
   const { user } = useAuth();
+  const navigate = useNavigate();
   
   const [activeTab, setActiveTab] = useState('grid'); // grid, requests, add
   const [searchTerm, setSearchTerm] = useState('');
@@ -72,9 +84,69 @@ const Network = () => {
   const [confirmInput, setConfirmInput] = useState('');
   const [targetRequest, setTargetRequest] = useState(null);
 
+  // Challenge System
+  const [socket, setSocket] = useState(null);
+  const [incomingChallenge, setIncomingChallenge] = useState(null);
+
   const acceptedFriends = friends.filter(f => f.status === 'accepted');
   const pendingRequests = friends.filter(f => f.status === 'pending_received');
   const sentRequests = friends.filter(f => f.status === 'pending_sent');
+
+  useEffect(() => {
+    if (user?.id) {
+      const newSocket = io(import.meta.env.VITE_API_BASE_URL.replace('/api', ''), {
+        withCredentials: true
+      });
+
+      newSocket.on('connect', () => {
+        console.log('Connected to socket for network features');
+        newSocket.emit('register', user.id);
+      });
+
+      newSocket.on('challenge-received', (data) => {
+        setIncomingChallenge(data);
+      });
+
+      newSocket.on('challenge-accepted', ({ roomId }) => {
+        // Navigate to play page with private room details
+        navigate('/play', { 
+          state: { 
+            mode: 'private-race', 
+            roomId 
+          } 
+        });
+      });
+
+      newSocket.on('challenge-declined', () => {
+        alert('Challenge declined.');
+      });
+
+      setSocket(newSocket);
+
+      return () => newSocket.disconnect();
+    }
+  }, [user?.id, navigate]);
+
+  const handleChallenge = (friend) => {
+    if (socket && friend.id) {
+      socket.emit('send-challenge', { 
+        targetUserId: friend.id,
+        senderName: user.username 
+      });
+      alert(`Challenge sent to ${friend.username}! Waiting for response...`);
+    }
+  };
+
+  const respondToChallenge = (accepted) => {
+    if (socket && incomingChallenge) {
+      socket.emit('respond-challenge', {
+        challengerId: incomingChallenge.challengerId,
+        accepted,
+        responderId: user.id
+      });
+      setIncomingChallenge(null);
+    }
+  };
 
   const handleSendRequest = async (e) => {
     e.preventDefault();
@@ -172,7 +244,12 @@ const Network = () => {
                      <HexNode center currentUser={user} />
                      
                      {acceptedFriends.map((friend) => (
-                        <HexNode key={friend.id} friend={friend} currentUser={user} />
+                        <HexNode 
+                          key={friend.id} 
+                          friend={friend} 
+                          currentUser={user}
+                          onChallenge={handleChallenge}
+                        />
                      ))}
                      
                      {/* Empty Slots for effect */}
@@ -344,6 +421,47 @@ const Network = () => {
 
            </AnimatePresence>
         </div>
+
+        {/* Challenge Invitation Modal */}
+        <AnimatePresence>
+          {incomingChallenge && (
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 50 }}
+              className="fixed bottom-6 right-6 z-50 w-full max-w-sm"
+            >
+              <div className="glass-card p-6 rounded-2xl border border-primary/50 shadow-[0_0_30px_rgba(34,197,94,0.2)] bg-base-dark/95 backdrop-blur-xl">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center animate-pulse">
+                    <Sword className="w-6 h-6 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-lg mb-1">Incoming Challenge!</h3>
+                    <p className="text-base-muted text-sm mb-4">
+                      <span className="text-white font-bold">{incomingChallenge.challengerName}</span> wants to race you.
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => respondToChallenge(true)}
+                        className="flex-1 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg font-bold text-sm transition-all"
+                      >
+                        Accept
+                      </button>
+                      <button
+                        onClick={() => respondToChallenge(false)}
+                        className="flex-1 py-2 bg-base-content/10 hover:bg-red-500/20 hover:text-red-400 text-base-content rounded-lg font-bold text-sm transition-all"
+                      >
+                        Decline
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
       </div>
     </div>
   );
