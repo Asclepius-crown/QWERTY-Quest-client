@@ -58,6 +58,7 @@ const Play = () => {
   const [loading, setLoading] = useState(false);
   const [streak, setStreak] = useState(0);
   const [chaosEffect, setChaosEffect] = useState(null);
+  const [raceResults, setRaceResults] = useState(null);
 
   // Ghost & Shadow Racing
   const [ghostIndex, setGhostIndex] = useState(0);
@@ -308,6 +309,7 @@ const Play = () => {
     });
 
     newSocket.on('race-results', (data) => {
+      setRaceResults(data);
       setGameState('completed');
     });
 
@@ -595,6 +597,7 @@ const Play = () => {
     setStreak(0);
     setChaosEffect(null);
     setGhostIndex(0);
+    setRaceResults(null);
     historyRef.current = [];
     opponentsRef.current = {};
   };
@@ -960,25 +963,97 @@ const Play = () => {
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="glass-card p-8 rounded-xl border border-base-content/5 text-center"
+                  className={`glass-card p-8 rounded-xl border text-center relative overflow-hidden ${
+                    mode === 'quick-race' && raceResults
+                      ? raceResults.winner === user?.id
+                        ? 'border-yellow-500/50 bg-yellow-900/10 shadow-[0_0_50px_rgba(234,179,8,0.2)]'
+                        : 'border-red-500/50 bg-red-900/10'
+                      : 'border-base-content/5'
+                  }`}
                 >
-                  <h2 className="text-3xl font-bold mb-4">Race Complete!</h2>
-                  <div className="grid grid-cols-2 gap-4 mb-6">
-                    <div>
-                      <div className="text-4xl font-bold text-primary">{wpm}</div>
-                      <div className="text-base-muted">Final WPM</div>
+                  {mode === 'quick-race' && raceResults ? (
+                    <div className="space-y-6">
+                      {raceResults.winner === user?.id ? (
+                        <>
+                           <div className="absolute inset-0 pointer-events-none">
+                              {[...Array(12)].map((_, i) => (
+                                <motion.div
+                                  key={i}
+                                  initial={{ y: -20, opacity: 0 }}
+                                  animate={{ y: 200, opacity: [0, 1, 0], x: (Math.random() - 0.5) * 200 }}
+                                  transition={{ duration: 2, repeat: Infinity, delay: Math.random() * 2 }}
+                                  className="absolute top-0 left-1/2 w-2 h-2 bg-yellow-400 rounded-full"
+                                />
+                              ))}
+                           </div>
+                           <motion.div 
+                             initial={{ scale: 0 }}
+                             animate={{ scale: 1, rotate: 360 }}
+                             transition={{ type: "spring", stiffness: 260, damping: 20 }}
+                             className="w-24 h-24 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto ring-4 ring-yellow-500/50 shadow-lg"
+                           >
+                             <Trophy className="w-12 h-12 text-yellow-400 drop-shadow-[0_0_10px_rgba(250,204,21,0.5)]" />
+                           </motion.div>
+                           <div>
+                             <h2 className="text-4xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-br from-yellow-300 to-amber-600 mb-2 filter drop-shadow-lg">
+                               VICTORY
+                             </h2>
+                             <p className="text-yellow-200/80 font-medium">You dominated the race!</p>
+                           </div>
+                        </>
+                      ) : (
+                        <>
+                           <motion.div 
+                             initial={{ scale: 0 }}
+                             animate={{ scale: 1 }}
+                             className="w-24 h-24 bg-red-500/20 rounded-full flex items-center justify-center mx-auto ring-4 ring-red-500/50"
+                           >
+                             <Skull className="w-12 h-12 text-red-500" />
+                           </motion.div>
+                           <div>
+                             <h2 className="text-4xl md:text-5xl font-black text-red-500 mb-2">DEFEAT</h2>
+                             <p className="text-red-300/80">Keep practicing to claim the crown.</p>
+                           </div>
+                        </>
+                      )}
+
+                      <div className="grid grid-cols-2 gap-4 max-w-md mx-auto bg-base-dark/50 p-4 rounded-xl border border-white/10">
+                        <div>
+                          <div className={`text-3xl font-bold ${raceResults.winner === user?.id ? 'text-yellow-400' : 'text-base-content'}`}>{wpm}</div>
+                          <div className="text-xs uppercase tracking-wider opacity-60">Final WPM</div>
+                        </div>
+                        <div>
+                          <div className={`text-3xl font-bold ${raceResults.winner === user?.id ? 'text-green-400' : 'text-base-content'}`}>{accuracy}%</div>
+                          <div className="text-xs uppercase tracking-wider opacity-60">Accuracy</div>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <div className="text-4xl font-bold text-green-400">{accuracy}%</div>
-                      <div className="text-base-muted">Accuracy</div>
-                    </div>
-                  </div>
+                  ) : (
+                    <>
+                      <h2 className="text-3xl font-bold mb-4">Race Complete!</h2>
+                      <div className="grid grid-cols-2 gap-4 mb-6">
+                        <div>
+                          <div className="text-4xl font-bold text-primary">{wpm}</div>
+                          <div className="text-base-muted">Final WPM</div>
+                        </div>
+                        <div>
+                          <div className="text-4xl font-bold text-green-400">{accuracy}%</div>
+                          <div className="text-base-muted">Accuracy</div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                  
                   <button
                     onClick={resetGame}
-                    className="px-6 py-3 bg-primary hover:bg-primary-hover text-white rounded-xl font-bold transition-all flex items-center gap-2 mx-auto"
+                    className={`mt-8 px-8 py-3 rounded-xl font-bold transition-all flex items-center gap-2 mx-auto shadow-lg hover:shadow-xl hover:-translate-y-1 ${
+                      mode === 'quick-race' && raceResults && raceResults.winner === user?.id 
+                      ? 'bg-gradient-to-r from-yellow-500 to-amber-600 text-white shadow-yellow-500/20' 
+                      : 'bg-primary hover:bg-primary-hover text-white'
+                    }`}
                   >
                     <RotateCcw className="w-5 h-5" />
-                    Race Again
+                    {mode === 'quick-race' ? 'Find New Match' : 'Race Again'}
                   </button>
                 </motion.div>
               )}
