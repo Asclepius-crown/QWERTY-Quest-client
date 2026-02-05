@@ -895,7 +895,7 @@ const Play = () => {
                     <div key={opponent.userId} className="glass-card p-4 rounded-xl border border-base-content/5">
                       <div className="flex items-center gap-3 mb-2">
                         <User className="w-5 h-5 text-base-muted" />
-                        <span className="font-medium">Opponent {idx + 1}</span>
+                        <span className="font-medium">{opponent.displayName || opponent.username || `Opponent ${idx + 1}`}</span>
                       </div>
                       <div className="grid grid-cols-3 gap-2 text-sm">
                         <div>
