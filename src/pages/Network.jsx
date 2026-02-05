@@ -94,11 +94,11 @@ import { useAuth } from '../contexts/AuthContext';
   };
 
 const Network = () => {
-  const { friends, loading, sendRequest, acceptRequest, removeFriend, fetchFriends } = useFriends();
+  const { friends, loading, sendRequest, acceptRequest, removeFriend, fetchFriends, blockedUsers, blockUser, unblockUser, reportUser } = useFriends();
   const { user } = useAuth();
   const navigate = useNavigate();
   
-  const [activeTab, setActiveTab] = useState('grid'); // grid, requests, add
+  const [activeTab, setActiveTab] = useState('grid'); // grid, requests, add, blocked
   const [searchTerm, setSearchTerm] = useState('');
   const [addUsername, setAddUsername] = useState('');
   const [scanStatus, setScanStatus] = useState('idle'); // idle, scanning, found, error
@@ -132,6 +132,15 @@ const Network = () => {
   const [pokeMessage, setPokeMessage] = useState('');
   const [pokeModalOpen, setPokeModalOpen] = useState(false);
   const [pokeTarget, setPokeTarget] = useState(null);
+  
+  // Block/Report feature state
+  const [blockModalOpen, setBlockModalOpen] = useState(false);
+  const [blockTarget, setBlockTarget] = useState(null);
+  const [blockReason, setBlockReason] = useState('');
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [reportTarget, setReportTarget] = useState(null);
+  const [reportReason, setReportReason] = useState('');
+  const [reportDetails, setReportDetails] = useState('');
 
   useEffect(() => {
     if (user?.id) {
@@ -198,6 +207,45 @@ const Network = () => {
       setPokeMessage('');
       setPokeTarget(null);
       alert(`Message sent to ${pokeTarget.username}!`);
+    }
+  };
+
+  const handleBlock = (friend) => {
+    setBlockTarget(friend);
+    setBlockModalOpen(true);
+  };
+
+  const confirmBlock = async () => {
+    if (blockTarget) {
+      const result = await blockUser(blockTarget.id, blockReason);
+      if (result.success) {
+        alert(`${blockTarget.username} has been blocked.`);
+      } else {
+        alert(result.msg);
+      }
+      setBlockModalOpen(false);
+      setBlockTarget(null);
+      setBlockReason('');
+    }
+  };
+
+  const handleReport = (friend) => {
+    setReportTarget(friend);
+    setReportModalOpen(true);
+  };
+
+  const confirmReport = async () => {
+    if (reportTarget && reportReason) {
+      const result = await reportUser(reportTarget.id, reportReason, reportDetails);
+      if (result.success) {
+        alert(`Report submitted for ${reportTarget.username}.`);
+      } else {
+        alert(result.msg);
+      }
+      setReportModalOpen(false);
+      setReportTarget(null);
+      setReportReason('');
+      setReportDetails('');
     }
   };
 
@@ -280,13 +328,22 @@ const Network = () => {
                  <span className="bg-red-500 text-white text-[10px] px-1.5 rounded-full">{pendingRequests.length}</span>
                )}
              </button>
-             <button 
-               onClick={() => setActiveTab('add')}
-               className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${activeTab === 'add' ? 'bg-primary text-white shadow-lg' : 'text-base-muted hover:text-base-content'}`}
-             >
-               <UserPlus className="w-4 h-4" /> Uplink
-             </button>
-          </div>
+              <button 
+                onClick={() => setActiveTab('add')}
+                className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${activeTab === 'add' ? 'bg-primary text-white shadow-lg' : 'text-base-muted hover:text-base-content'}`}
+              >
+                <UserPlus className="w-4 h-4" /> Uplink
+              </button>
+              <button 
+                onClick={() => setActiveTab('blocked')}
+                className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${activeTab === 'blocked' ? 'bg-red-500 text-white shadow-lg' : 'text-base-muted hover:text-base-content'}`}
+              >
+                <Shield className="w-4 h-4" /> Blocked
+                {blockedUsers.length > 0 && (
+                  <span className="bg-white text-red-500 text-[10px] px-1.5 rounded-full font-bold">{blockedUsers.length}</span>
+                )}
+              </button>
+           </div>
         </div>
 
         {/* Content Area */}
@@ -519,10 +576,79 @@ const Network = () => {
                         )}
                      </div>
                   </div>
-               </motion.div>
-             )}
+                </motion.div>
+              )}
 
-           </AnimatePresence>
+              {/* BLOCKED USERS VIEW */}
+              {activeTab === 'blocked' && (
+                <motion.div 
+                  key="blocked"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="max-w-2xl mx-auto"
+                >
+                  {blockedUsers.length === 0 ? (
+                    <div className="text-center py-20 opacity-50">
+                      <Shield className="w-16 h-16 mx-auto mb-4 text-green-400" />
+                      <h3 className="text-xl font-bold">No Blocked Users</h3>
+                      <p className="text-sm mt-2">Your network is secure and clear.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 mb-6">
+                        <h3 className="text-red-400 font-bold flex items-center gap-2">
+                          <Shield className="w-5 h-5" />
+                          Blocked Users ({blockedUsers.length})
+                        </h3>
+                        <p className="text-sm text-base-muted mt-1">
+                          These users cannot send you friend requests or interact with you. They won't be notified that you've blocked them.
+                        </p>
+                      </div>
+
+                      <div className="space-y-3">
+                        {blockedUsers.map(blocked => (
+                          <div key={blocked.id} className="glass-card p-4 rounded-xl border border-base-content/10 flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center">
+                                <Users className="w-6 h-6 text-red-400" />
+                              </div>
+                              <div>
+                                <div className="font-bold text-lg">{blocked.username}</div>
+                                <div className="text-xs text-base-muted font-mono">{blocked.netId}</div>
+                                {blocked.reason && (
+                                  <div className="text-xs text-red-400 mt-1">Reason: {blocked.reason}</div>
+                                )}
+                                <div className="text-[10px] text-base-muted/50 mt-1">
+                                  Blocked on {new Date(blocked.blockedAt).toLocaleDateString()}
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <button 
+                              onClick={async () => {
+                                if (confirm(`Unblock ${blocked.username}? They will be able to send you friend requests again.`)) {
+                                  const result = await unblockUser(blocked.id);
+                                  if (result.success) {
+                                    alert(`${blocked.username} has been unblocked.`);
+                                  } else {
+                                    alert(result.msg);
+                                  }
+                                }
+                              }}
+                              className="px-4 py-2 bg-base-content/10 hover:bg-green-500/20 text-base-muted hover:text-green-400 rounded-lg text-sm font-bold transition-all"
+                            >
+                              Unblock
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+
+            </AnimatePresence>
         </div>
 
          {/* Challenge Invitation Modal */}
@@ -678,36 +804,60 @@ const Network = () => {
                    </div>
                  </div>
 
-                 {/* Actions */}
-                 <div className="flex gap-2">
-                   <button
-                     onClick={() => {
-                       handleChallenge(selectedFriend);
-                       setSelectedFriend(null);
-                     }}
-                     className="flex-1 py-3 bg-primary hover:bg-primary-hover text-white rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2"
-                   >
-                     <Sword className="w-4 h-4" />
-                     Challenge
-                   </button>
-                   <button
-                     onClick={() => {
-                       handlePoke(selectedFriend);
-                       setSelectedFriend(null);
-                     }}
-                     className="flex-1 py-3 bg-base-content/10 hover:bg-base-content/20 text-base-content rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2"
-                   >
-                     <Zap className="w-4 h-4" />
-                     Poke
-                   </button>
-                 </div>
+                  {/* Actions */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        handleChallenge(selectedFriend);
+                        setSelectedFriend(null);
+                      }}
+                      className="flex-1 py-3 bg-primary hover:bg-primary-hover text-white rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2"
+                    >
+                      <Sword className="w-4 h-4" />
+                      Challenge
+                    </button>
+                    <button
+                      onClick={() => {
+                        handlePoke(selectedFriend);
+                        setSelectedFriend(null);
+                      }}
+                      className="flex-1 py-3 bg-base-content/10 hover:bg-base-content/20 text-base-content rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2"
+                    >
+                      <Zap className="w-4 h-4" />
+                      Poke
+                    </button>
+                  </div>
 
-                 <button
-                   onClick={() => setSelectedFriend(null)}
-                   className="w-full mt-3 py-2 text-base-muted hover:text-white text-sm transition-colors"
-                 >
-                   Close
-                 </button>
+                  {/* Safety Actions */}
+                  <div className="flex gap-2 mt-3">
+                    <button
+                      onClick={() => {
+                        handleBlock(selectedFriend);
+                        setSelectedFriend(null);
+                      }}
+                      className="flex-1 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-2"
+                    >
+                      <Shield className="w-3 h-3" />
+                      Block
+                    </button>
+                    <button
+                      onClick={() => {
+                        handleReport(selectedFriend);
+                        setSelectedFriend(null);
+                      }}
+                      className="flex-1 py-2 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-2"
+                    >
+                      <Zap className="w-3 h-3" />
+                      Report
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={() => setSelectedFriend(null)}
+                    className="w-full mt-3 py-2 text-base-muted hover:text-white text-sm transition-colors"
+                  >
+                    Close
+                  </button>
                </motion.div>
              </motion.div>
            )}
@@ -790,11 +940,161 @@ const Network = () => {
                </motion.div>
              </motion.div>
            )}
-         </AnimatePresence>
+          </AnimatePresence>
 
-       </div>
-     </div>
-   );
- };
+          {/* Block User Modal */}
+          <AnimatePresence>
+            {blockModalOpen && blockTarget && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+                onClick={() => setBlockModalOpen(false)}
+              >
+                <motion.div
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.9, opacity: 0 }}
+                  className="glass-card p-6 rounded-2xl border border-red-500/30 shadow-[0_0_30px_rgba(239,68,68,0.2)] bg-base-dark/95 backdrop-blur-xl max-w-md w-full"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center">
+                      <Shield className="w-6 h-6 text-red-400" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-lg text-red-400">Block {blockTarget.username}?</h3>
+                      <p className="text-sm text-base-muted">This action cannot be undone easily</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-red-500/10 rounded-lg p-3 mb-4">
+                    <p className="text-sm text-base-content">
+                      Blocking {blockTarget.username} will:
+                    </p>
+                    <ul className="text-sm text-base-muted mt-2 space-y-1 list-disc list-inside">
+                      <li>Remove them from your friends list</li>
+                      <li>Prevent them from sending you friend requests</li>
+                      <li>Hide your activity from them</li>
+                    </ul>
+                  </div>
+
+                  <div className="mb-4">
+                    <label className="text-xs text-base-muted uppercase tracking-wider mb-2 block">Reason (optional)</label>
+                    <select
+                      value={blockReason}
+                      onChange={(e) => setBlockReason(e.target.value)}
+                      className="w-full bg-base-navy border border-base-content/20 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
+                    >
+                      <option value="">Select a reason...</option>
+                      <option value="Spam">Spam</option>
+                      <option value="Harassment">Harassment</option>
+                      <option value="Inappropriate behavior">Inappropriate behavior</option>
+                      <option value="Cheating">Cheating</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={confirmBlock}
+                      className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2"
+                    >
+                      <Shield className="w-4 h-4" />
+                      Block User
+                    </button>
+                    <button
+                      onClick={() => setBlockModalOpen(false)}
+                      className="flex-1 py-3 bg-base-content/10 hover:bg-base-content/20 text-base-content font-bold rounded-lg transition-all"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Report User Modal */}
+          <AnimatePresence>
+            {reportModalOpen && reportTarget && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+                onClick={() => setReportModalOpen(false)}
+              >
+                <motion.div
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.9, opacity: 0 }}
+                  className="glass-card p-6 rounded-2xl border border-yellow-500/30 shadow-[0_0_30px_rgba(234,179,8,0.2)] bg-base-dark/95 backdrop-blur-xl max-w-md w-full"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-12 h-12 rounded-full bg-yellow-500/20 flex items-center justify-center">
+                      <Zap className="w-6 h-6 text-yellow-400" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-lg text-yellow-400">Report {reportTarget.username}</h3>
+                      <p className="text-sm text-base-muted">Help us keep the community safe</p>
+                    </div>
+                  </div>
+
+                  <div className="mb-4">
+                    <label className="text-xs text-base-muted uppercase tracking-wider mb-2 block">Reason *</label>
+                    <select
+                      value={reportReason}
+                      onChange={(e) => setReportReason(e.target.value)}
+                      className="w-full bg-base-navy border border-base-content/20 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 outline-none"
+                    >
+                      <option value="">Select a reason...</option>
+                      <option value="Cheating">Cheating / Unfair play</option>
+                      <option value="Harassment">Harassment or bullying</option>
+                      <option value="Inappropriate username">Inappropriate username</option>
+                      <option value="Spam">Spam</option>
+                      <option value="Hate speech">Hate speech</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+
+                  <div className="mb-4">
+                    <label className="text-xs text-base-muted uppercase tracking-wider mb-2 block">Details (optional)</label>
+                    <textarea
+                      value={reportDetails}
+                      onChange={(e) => setReportDetails(e.target.value)}
+                      placeholder="Please provide any additional details about the issue..."
+                      rows={3}
+                      className="w-full bg-base-navy border border-base-content/20 rounded-lg px-4 py-3 text-white placeholder-base-muted focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 outline-none resize-none"
+                    />
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={confirmReport}
+                      disabled={!reportReason}
+                      className="flex-1 py-3 bg-yellow-500 hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold rounded-lg transition-all flex items-center justify-center gap-2"
+                    >
+                      <Zap className="w-4 h-4" />
+                      Submit Report
+                    </button>
+                    <button
+                      onClick={() => setReportModalOpen(false)}
+                      className="flex-1 py-3 bg-base-content/10 hover:bg-base-content/20 text-base-content font-bold rounded-lg transition-all"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+        </div>
+      </div>
+    );
+  };
 
 export default Network;
