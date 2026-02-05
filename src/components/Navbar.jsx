@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useFriends } from '../contexts/FriendsContext';
 import { motion, AnimatePresence } from 'framer-motion';
 
   const MenuLink = ({ to, icon: Icon, label, onClick }) => (
@@ -36,6 +37,10 @@ const Navbar = () => {
   const [profileOpen, setProfileOpen] = useState(false);
   const [status] = useState('online');
   const { isLoggedIn, user, logout } = useAuth();
+  const { friends } = useFriends();
+  
+  // Get pending friend requests count
+  const pendingRequestsCount = friends.filter(f => f.status === 'pending_received').length;
 
   const avatars = [
     { id: 'avatar1', icon: User, color: 'text-blue-400', bg: 'bg-blue-500/20' },
@@ -200,8 +205,20 @@ const Navbar = () => {
                       {/* Zone 2: Core Player Actions */}
                       <div className="mb-2">
                         <div className="px-3 py-1 text-[10px] font-bold text-base-muted uppercase tracking-widest">Menu</div>
-                        <MenuLink to="/profile" icon={UserCircle} label="My Profile & Stats" onClick={() => setProfileOpen(false)} />
-                        <MenuLink to="/network" icon={Share2} label="Network (Friends)" onClick={() => setProfileOpen(false)} />
+                         <MenuLink to="/profile" icon={UserCircle} label="My Profile & Stats" onClick={() => setProfileOpen(false)} />
+                         <Link 
+                           to="/network" 
+                           onClick={() => setProfileOpen(false)}
+                           className="flex items-center gap-3 px-3 py-2 text-sm text-base-content/80 hover:text-base-content hover:bg-base-content/5 rounded-lg transition-all group"
+                         >
+                           <Share2 className="w-4 h-4 text-base-muted group-hover:text-primary transition-colors" />
+                           <span>Network (Friends)</span>
+                           {pendingRequestsCount > 0 && (
+                             <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold animate-pulse">
+                               {pendingRequestsCount}
+                             </span>
+                           )}
+                         </Link>
                         <MenuLink to="/leaderboard" icon={Trophy} label="My Rank" onClick={() => setProfileOpen(false)} />
                         <MenuLink to="/practice" icon={Target} label="Practice Mode" onClick={() => setProfileOpen(false)} />
                       </div>
@@ -211,10 +228,22 @@ const Navbar = () => {
                       {/* Zone 3: Account & System */}
                       <div className="mb-2">
                         <div className="px-3 py-1 text-[10px] font-bold text-base-muted uppercase tracking-widest">System</div>
-                        <MenuLink to="/settings" icon={Settings} label="Settings" onClick={() => setProfileOpen(false)} />
-                        <MenuLink to="/settings" icon={Palette} label="Customize" onClick={() => setProfileOpen(false)} />
-                        <MenuButton icon={Bell} label="Notifications" onClick={() => alert('Notifications system coming soon!')} />
-                        <MenuLink to="/network" icon={UsersIcon} label="Manage Uplinks" onClick={() => setProfileOpen(false)} />
+                         <MenuLink to="/settings" icon={Settings} label="Settings" onClick={() => setProfileOpen(false)} />
+                         <MenuLink to="/settings" icon={Palette} label="Customize" onClick={() => setProfileOpen(false)} />
+                         <MenuButton icon={Bell} label="Notifications" onClick={() => alert('Notifications system coming soon!')} />
+                         <Link 
+                           to="/network" 
+                           onClick={() => setProfileOpen(false)}
+                           className="flex items-center gap-3 px-3 py-2 text-sm text-base-content/80 hover:text-base-content hover:bg-base-content/5 rounded-lg transition-all group"
+                         >
+                           <UsersIcon className="w-4 h-4 text-base-muted group-hover:text-primary transition-colors" />
+                           <span>Manage Uplinks</span>
+                           {pendingRequestsCount > 0 && (
+                             <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold animate-pulse">
+                               {pendingRequestsCount}
+                             </span>
+                           )}
+                         </Link>
                       </div>
 
                       <div className="h-px bg-base-content/5 my-1 mx-2"></div>
