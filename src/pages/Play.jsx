@@ -405,7 +405,7 @@ const Play = () => {
     if (gameState === 'completed' && user) {
       if (mode === 'solo' || mode === 'github') {
         saveResults();
-      } else if (mode === 'quick-race' && raceId && socket && user) {
+      } else if ((mode === 'quick-race' || mode === 'ranked') && raceId && socket && user) {
         const timeTaken = 60 - timeLeft;
         socket.emit('race-finished', {
           raceId,
@@ -414,7 +414,8 @@ const Play = () => {
           accuracy: accuracy || 0,
           errors,
           timeTaken,
-          replayData: historyRef.current
+          replayData: historyRef.current,
+          mode: mode
         });
       }
     }
@@ -975,14 +976,16 @@ const Play = () => {
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   className={`glass-card p-8 rounded-xl border text-center relative overflow-hidden ${
-                    mode === 'quick-race' && raceResults
+                    (mode === 'quick-race' || mode === 'ranked') && raceResults
                       ? raceResults.winner === user?.id
                         ? 'border-yellow-500/50 bg-yellow-900/10 shadow-[0_0_50px_rgba(234,179,8,0.2)]'
-                        : 'border-red-500/50 bg-red-900/10'
+                        : raceResults.isDraw
+                          ? 'border-blue-500/50 bg-blue-900/10'
+                          : 'border-red-500/50 bg-red-900/10'
                       : 'border-base-content/5'
                   }`}
                 >
-                  {mode === 'quick-race' && raceResults ? (
+                  {(mode === 'quick-race' || mode === 'ranked') && raceResults ? (
                     <div className="space-y-6">
                       {raceResults.winner === user?.id ? (
                         <>
@@ -1007,9 +1010,25 @@ const Play = () => {
                            </motion.div>
                            <div>
                              <h2 className="text-4xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-br from-yellow-300 to-amber-600 mb-2 filter drop-shadow-lg">
-                               VICTORY
+                               {mode === 'ranked' ? 'RANKED VICTORY' : 'VICTORY'}
                              </h2>
-                             <p className="text-yellow-200/80 font-medium">You dominated the race!</p>
+                             <p className="text-yellow-200/80 font-medium">
+                               {mode === 'ranked' ? 'You earned ELO points!' : 'You dominated the race!'}
+                             </p>
+                           </div>
+                        </>
+                      ) : raceResults.isDraw ? (
+                        <>
+                           <motion.div 
+                             initial={{ scale: 0 }}
+                             animate={{ scale: 1 }}
+                             className="w-24 h-24 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto ring-4 ring-blue-500/50"
+                           >
+                             <div className="text-4xl font-bold text-blue-500">=</div>
+                           </motion.div>
+                           <div>
+                             <h2 className="text-4xl md:text-5xl font-black text-blue-500 mb-2">DRAW</h2>
+                             <p className="text-blue-300/80">No ELO change.</p>
                            </div>
                         </>
                       ) : (
@@ -1022,23 +1041,47 @@ const Play = () => {
                              <Skull className="w-12 h-12 text-red-500" />
                            </motion.div>
                            <div>
-                             <h2 className="text-4xl md:text-5xl font-black text-red-500 mb-2">DEFEAT</h2>
-                             <p className="text-red-300/80">Keep practicing to claim the crown.</p>
+                             <h2 className="text-4xl md:text-5xl font-black text-red-500 mb-2">
+                               {mode === 'ranked' ? 'RANKED DEFEAT' : 'DEFEAT'}
+                             </h2>
+                             <p className="text-red-300/80">
+                               {mode === 'ranked' ? 'You lost ELO points. Keep practicing!' : 'Keep practicing to claim the crown.'}
+                             </p>
                            </div>
                         </>
                       )}
 
-                      <div className="grid grid-cols-2 gap-4 max-w-md mx-auto bg-base-dark/50 p-4 rounded-xl border border-white/10">
-                        <div>
-                          <div className={`text-3xl font-bold ${raceResults.winner === user?.id ? 'text-yellow-400' : 'text-base-content'}`}>{wpm}</div>
-                          <div className="text-xs uppercase tracking-wider opacity-60">Final WPM</div>
-                        </div>
-                        <div>
-                          <div className={`text-3xl font-bold ${raceResults.winner === user?.id ? 'text-green-400' : 'text-base-content'}`}>{accuracy}%</div>
-                          <div className="text-xs uppercase tracking-wider opacity-60">Accuracy</div>
-                        </div>
-                      </div>
-                    </div>
+                       <div className="grid grid-cols-2 gap-4 max-w-md mx-auto bg-base-dark/50 p-4 rounded-xl border border-white/10">
+                         <div>
+                           <div className={`text-3xl font-bold ${raceResults.winner === user?.id ? 'text-yellow-400' : 'text-base-content'}`}>{wpm}</div>
+                           <div className="text-xs uppercase tracking-wider opacity-60">Final WPM</div>
+                         </div>
+                         <div>
+                           <div className={`text-3xl font-bold ${raceResults.winner === user?.id ? 'text-green-400' : 'text-base-content'}`}>{accuracy}%</div>
+                           <div className="text-xs uppercase tracking-wider opacity-60">Accuracy</div>
+                         </div>
+                       </div>
+                       
+                       {/* ELO Changes for Ranked Matches */}
+                       {mode === 'ranked' && raceResults?.eloChanges && (
+                         <div className="mt-4 p-4 bg-base-dark/50 rounded-xl border border-base-content/10">
+                           <div className="text-sm text-base-muted mb-2">RANKED RESULTS</div>
+                           {raceResults.eloChanges
+                             .filter(change => change.userId === user?.id)
+                             .map((change, idx) => (
+                               <div key={idx} className="flex items-center justify-center gap-3">
+                                 <span className="text-2xl font-bold">{change.newElo}</span>
+                                 <span className={`text-lg font-bold ${change.change > 0 ? 'text-green-400' : change.change < 0 ? 'text-red-400' : 'text-gray-400'}`}>
+                                   {change.change > 0 ? '+' : ''}{change.change} ELO
+                                 </span>
+                               </div>
+                             ))}
+                           {raceResults.isDraw && (
+                             <div className="text-sm text-yellow-400 mt-2">DRAW - No ELO change</div>
+                           )}
+                         </div>
+                       )}
+                     </div>
                   ) : (
                     <>
                       <h2 className="text-3xl font-bold mb-4">Race Complete!</h2>
@@ -1058,13 +1101,13 @@ const Play = () => {
                   <button
                     onClick={resetGame}
                     className={`mt-8 px-8 py-3 rounded-xl font-bold transition-all flex items-center gap-2 mx-auto shadow-lg hover:shadow-xl hover:-translate-y-1 ${
-                      mode === 'quick-race' && raceResults && raceResults.winner === user?.id 
-                      ? 'bg-gradient-to-r from-yellow-500 to-amber-600 text-white shadow-yellow-500/20' 
+                      (mode === 'quick-race' || mode === 'ranked') && raceResults && raceResults.winner === user?.id
+                      ? 'bg-gradient-to-r from-yellow-500 to-amber-600 text-white shadow-yellow-500/20'
                       : 'bg-primary hover:bg-primary-hover text-white'
                     }`}
                   >
                     <RotateCcw className="w-5 h-5" />
-                    {mode === 'quick-race' ? 'Find New Match' : 'Race Again'}
+                    {(mode === 'quick-race' || mode === 'ranked') ? 'Find New Match' : 'Race Again'}
                   </button>
                 </motion.div>
               )}

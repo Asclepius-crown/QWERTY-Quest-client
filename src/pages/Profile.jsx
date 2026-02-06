@@ -4,24 +4,55 @@ import { Link } from 'react-router-dom';
 import { 
   MapPin, Calendar, Trophy, Zap, Target, Award, Clock, 
   Share2, Shield, Crown, Flame, Activity, BarChart2, Keyboard, 
-  ArrowUp, History
+  ArrowUp, History, Filter, Grid3X3, List, Lock, Unlock
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
-import { useAchievements, ACHIEVEMENTS } from '../contexts/AchievementContext';
+import { useAchievements, ACHIEVEMENTS, RARITY } from '../contexts/AchievementContext';
 import Navbar from '../components/Navbar';
 import NeuralHeatmap from '../components/NeuralHeatmap';
+import AchievementCard from '../components/AchievementCard';
 import { getUserAvatarDisplay, isCustomAvatar } from '../config/avatars';
 
 const Profile = () => {
   const { user } = useAuth();
-  const { unlocked } = useAchievements();
+  const { unlocked, getProgress, getCategoryProgress, totalUnlocked, totalAchievements } = useAchievements();
   const [activeTab, setActiveTab] = useState('overview');
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [chartMetric, setChartMetric] = useState('wpm'); // 'wpm' or 'accuracy'
+  
+  // Achievement filter states
+  const [achievementFilter, setAchievementFilter] = useState('all'); // 'all', 'unlocked', 'locked'
+  const [categoryFilter, setCategoryFilter] = useState('all'); // 'all', 'speed', 'precision', 'progress', 'competitive', 'special'
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
 
   const avatarDisplay = getUserAvatarDisplay(user);
   const isCustom = isCustomAvatar(user?.avatar);
+  
+  // Filter achievements
+  const filteredAchievements = Object.values(ACHIEVEMENTS).filter(achievement => {
+    const isUnlocked = unlocked.includes(achievement.id);
+    
+    // Filter by lock status
+    if (achievementFilter === 'unlocked' && !isUnlocked) return false;
+    if (achievementFilter === 'locked' && isUnlocked) return false;
+    
+    // Filter by category
+    if (categoryFilter !== 'all' && achievement.category !== categoryFilter) return false;
+    
+    return true;
+  });
+  
+  // Category definitions
+  const categories = [
+    { id: 'all', label: 'All', icon: Grid3X3 },
+    { id: 'speed', label: 'Speed', icon: Zap },
+    { id: 'precision', label: 'Precision', icon: Target },
+    { id: 'progress', label: 'Progress', icon: Trophy },
+    { id: 'competitive', label: 'Competitive', icon: Crown },
+    { id: 'special', label: 'Special', icon: Award }
+  ];
 
   // Fetch History logic from Dashboard
   useEffect(() => {
@@ -50,8 +81,10 @@ const Profile = () => {
     const firstHalf = last10.slice(0, 5);
     const secondHalf = last10.slice(5);
     
-    const avgFirst = firstHalf.reduce((acc, curr) => acc + (curr[key] || 0), 0) / firstHalf.length || 0;
-    const avgSecond = secondHalf.reduce((acc, curr) => acc + (curr[key] || 0), 0) / secondHalf.length || 0;
+    const getValue = (race, k) => race.participants?.[0]?.[k] || 0;
+    
+    const avgFirst = firstHalf.reduce((acc, curr) => acc + getValue(curr, key), 0) / firstHalf.length || 0;
+    const avgSecond = secondHalf.reduce((acc, curr) => acc + getValue(curr, key), 0) / secondHalf.length || 0;
     
     return ((avgSecond - avgFirst)).toFixed(1);
   };
@@ -62,8 +95,8 @@ const Profile = () => {
   // Chart Data
   const chartData = history.map((race, idx) => ({
     name: `Race ${idx + 1}`,
-    wpm: race.wpm,
-    acc: race.accuracy
+    wpm: race.participants?.[0]?.wpm || 0,
+    accuracy: race.participants?.[0]?.accuracy || 0
   }));
 
   return (
@@ -193,25 +226,174 @@ const Profile = () => {
                 transition={{ delay: 0.2 }}
                 className="glass-card p-6 rounded-2xl border border-base-content/5"
             >
-                <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-base-muted text-xs font-bold uppercase tracking-widest">Legacy Archive</h3>
-                    <span className="text-xs text-primary">{unlocked.length} / {Object.keys(ACHIEVEMENTS).length} Unlocked</span>
+                {/* Header with Progress */}
+                <div className="flex flex-col gap-4 mb-6">
+                    <div className="flex justify-between items-center">
+                        <h3 className="text-base-muted text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+                            <Trophy className="w-4 h-4 text-yellow-500" />
+                            Legacy Archive
+                        </h3>
+                        <span className="text-xs text-primary font-bold">
+                            {totalUnlocked} / {totalAchievements} Unlocked
+                        </span>
+                    </div>
+                    
+                    {/* Overall Progress Bar */}
+                    <div className="space-y-2">
+                        <div className="flex justify-between text-xs">
+                            <span className="text-slate-400">Total Completion</span>
+                            <span className="text-primary font-bold">
+                                {Math.round((totalUnlocked / totalAchievements) * 100)}%
+                            </span>
+                        </div>
+                        <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                            <motion.div
+                                className="h-full rounded-full relative overflow-hidden"
+                                style={{
+                                    background: 'linear-gradient(90deg, #3B82F6, #8B5CF6, #EAB308)'
+                                }}
+                                initial={{ width: 0 }}
+                                animate={{ width: `${(totalUnlocked / totalAchievements) * 100}%` }}
+                                transition={{ duration: 1.5, ease: 'easeOut' }}
+                            >
+                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-30 animate-shimmer" />
+                            </motion.div>
+                        </div>
+                    </div>
                 </div>
-                <div className="grid grid-cols-4 gap-2">
-                    {Object.values(ACHIEVEMENTS).map((achievement) => {
-                        const isUnlocked = unlocked.includes(achievement.id);
+
+                {/* Category Tabs */}
+                <div className="flex gap-1 mb-4 overflow-x-auto pb-2 scrollbar-hide">
+                    {categories.map((cat) => {
+                        const CatIcon = cat.icon;
+                        const progress = getCategoryProgress(cat.id);
+                        const isActive = categoryFilter === cat.id;
+                        
                         return (
-                            <div key={achievement.id} className={`aspect-square rounded-xl flex items-center justify-center border transition-all group relative ${isUnlocked ? 'bg-primary/10 border-primary/30 text-primary shadow-[0_0_10px_rgba(59,130,246,0.2)]' : 'bg-base-content/5 text-base-muted/20 border-transparent grayscale'}`}>
-                                <achievement.icon className="w-6 h-6" />
-                                {/* Tooltip */}
-                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-[150px] p-2 bg-base-navy border border-base-content/10 text-center rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-20 shadow-xl">
-                                    <div className={`text-xs font-bold ${isUnlocked ? 'text-white' : 'text-base-muted'}`}>{achievement.title}</div>
-                                    <div className="text-[10px] text-base-muted mt-0.5">{achievement.desc}</div>
-                                </div>
-                            </div>
+                            <button
+                                key={cat.id}
+                                onClick={() => setCategoryFilter(cat.id)}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
+                                    isActive
+                                        ? 'bg-primary/20 text-primary border border-primary/30'
+                                        : 'bg-slate-800/50 text-slate-400 border border-slate-700 hover:bg-slate-700/50'
+                                }`}
+                            >
+                                <CatIcon className="w-3.5 h-3.5" />
+                                <span>{cat.label}</span>
+                                {cat.id !== 'all' && (
+                                    <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] ${
+                                        isActive ? 'bg-primary/30' : 'bg-slate-700'
+                                    }`}>
+                                        {progress.unlocked}/{progress.total}
+                                    </span>
+                                )}
+                            </button>
                         );
                     })}
                 </div>
+
+                {/* Filter Controls */}
+                <div className="flex justify-between items-center mb-4">
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => setAchievementFilter('all')}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                                achievementFilter === 'all'
+                                    ? 'bg-slate-700 text-white'
+                                    : 'text-slate-400 hover:text-white'
+                            }`}
+                        >
+                            <Grid3X3 className="w-3.5 h-3.5" />
+                            All
+                        </button>
+                        <button
+                            onClick={() => setAchievementFilter('unlocked')}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                                achievementFilter === 'unlocked'
+                                    ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                                    : 'text-slate-400 hover:text-green-400'
+                            }`}
+                        >
+                            <Unlock className="w-3.5 h-3.5" />
+                            Unlocked
+                        </button>
+                        <button
+                            onClick={() => setAchievementFilter('locked')}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                                achievementFilter === 'locked'
+                                    ? 'bg-slate-600 text-slate-300 border border-slate-500'
+                                    : 'text-slate-400 hover:text-slate-300'
+                            }`}
+                        >
+                            <Lock className="w-3.5 h-3.5" />
+                            Locked
+                        </button>
+                    </div>
+                    
+                    <div className="flex gap-1 bg-slate-800/50 p-1 rounded-lg">
+                        <button
+                            onClick={() => setViewMode('grid')}
+                            className={`p-1.5 rounded transition-all ${
+                                viewMode === 'grid' ? 'bg-slate-600 text-white' : 'text-slate-400'
+                            }`}
+                        >
+                            <Grid3X3 className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={() => setViewMode('list')}
+                            className={`p-1.5 rounded transition-all ${
+                                viewMode === 'list' ? 'bg-slate-600 text-white' : 'text-slate-400'
+                            }`}
+                        >
+                            <List className="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
+
+                {/* Achievements Grid */}
+                <motion.div 
+                    layout
+                    className={viewMode === 'grid' 
+                        ? "grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[600px] overflow-y-auto pr-2 scrollbar-thin"
+                        : "space-y-3 max-h-[600px] overflow-y-auto pr-2 scrollbar-thin"
+                    }
+                >
+                    <AnimatePresence mode="popLayout">
+                        {filteredAchievements.map((achievement) => (
+                            <motion.div
+                                key={achievement.id}
+                                layout
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.9 }}
+                                transition={{ duration: 0.2 }}
+                            >
+                                <AchievementCard
+                                    achievement={achievement}
+                                    progress={getProgress(achievement.id)}
+                                    isUnlocked={unlocked.includes(achievement.id)}
+                                />
+                            </motion.div>
+                        ))}
+                    </AnimatePresence>
+                </motion.div>
+
+                {filteredAchievements.length === 0 && (
+                    <div className="text-center py-12 text-slate-500">
+                        <Filter className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                        <p className="text-sm">No achievements match your filters</p>
+                        <button
+                            onClick={() => {
+                                setAchievementFilter('all');
+                                setCategoryFilter('all');
+                            }}
+                            className="mt-3 text-xs text-primary hover:underline"
+                        >
+                            Clear filters
+                        </button>
+                    </div>
+                )}
             </motion.div>
         </div>
 
@@ -285,8 +467,26 @@ const Profile = () => {
                                 <Activity className="w-5 h-5 text-primary" /> Performance History
                                 </h3>
                                 <div className="flex gap-2">
-                                <span className="text-xs px-2 py-1 rounded bg-primary/20 text-primary border border-primary/20">Speed</span>
-                                <span className="text-xs px-2 py-1 rounded bg-base-content/5 text-base-muted border border-base-content/10">Accuracy</span>
+                                <button
+                                  onClick={() => setChartMetric('wpm')}
+                                  className={`text-xs px-2 py-1 rounded border transition-colors cursor-pointer ${
+                                    chartMetric === 'wpm'
+                                      ? 'bg-primary/20 text-primary border-primary/20'
+                                      : 'bg-base-content/5 text-base-muted border-base-content/10 hover:bg-base-content/10'
+                                  }`}
+                                >
+                                  Speed
+                                </button>
+                                <button
+                                  onClick={() => setChartMetric('accuracy')}
+                                  className={`text-xs px-2 py-1 rounded border transition-colors cursor-pointer ${
+                                    chartMetric === 'accuracy'
+                                      ? 'bg-green-500/20 text-green-400 border-green-500/20'
+                                      : 'bg-base-content/5 text-base-muted border-base-content/10 hover:bg-base-content/10'
+                                  }`}
+                                >
+                                  Accuracy
+                                </button>
                                 </div>
                             </div>
                             <div className="h-64 w-full min-h-[250px]">
@@ -298,6 +498,10 @@ const Profile = () => {
                                                 <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3}/>
                                                 <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
                                             </linearGradient>
+                                            <linearGradient id="colorAcc" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#22C55E" stopOpacity={0.3}/>
+                                                <stop offset="95%" stopColor="#22C55E" stopOpacity={0}/>
+                                            </linearGradient>
                                             </defs>
                                             <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
                                             <XAxis dataKey="name" hide />
@@ -306,7 +510,14 @@ const Profile = () => {
                                             contentStyle={{ backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: '8px' }}
                                             itemStyle={{ color: '#fff' }}
                                             />
-                                            <Area type="monotone" dataKey="wpm" stroke="#3B82F6" strokeWidth={3} fillOpacity={1} fill="url(#colorWpm)" />
+                                            <Area 
+                                              type="monotone" 
+                                              dataKey={chartMetric} 
+                                              stroke={chartMetric === 'wpm' ? '#3B82F6' : '#22C55E'} 
+                                              strokeWidth={3} 
+                                              fillOpacity={1} 
+                                              fill={chartMetric === 'wpm' ? 'url(#colorWpm)' : 'url(#colorAcc)'} 
+                                            />
                                         </AreaChart>
                                     </ResponsiveContainer>
                                 ) : (
@@ -354,8 +565,8 @@ const Profile = () => {
                                             <Trophy className="w-3 h-3" /> VICTORY
                                         </span>
                                         </td>
-                                        <td className="px-6 py-4 font-mono font-bold text-base-content">{race.wpm}</td>
-                                        <td className="px-6 py-4 text-base-content/80">{race.accuracy}%</td>
+                                        <td className="px-6 py-4 font-mono font-bold text-base-content">{race.participants?.[0]?.wpm || 0}</td>
+                                        <td className="px-6 py-4 text-base-content/80">{race.participants?.[0]?.accuracy || 0}%</td>
                                         <td className="px-6 py-4 text-base-muted text-sm">{new Date(race.createdAt).toLocaleDateString()}</td>
                                         <td className="px-6 py-4">
                                         <button className="text-xs bg-base-content/10 hover:bg-white/20 text-base-content px-3 py-1 rounded transition-colors">

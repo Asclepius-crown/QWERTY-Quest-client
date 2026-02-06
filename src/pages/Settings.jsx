@@ -8,21 +8,19 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
 import Navbar from '../components/Navbar';
-import { AVATARS, getUserAvatarDisplay, isCustomAvatar, getAvatarsByCategory } from '../config/avatars';
+import { getUserAvatarDisplay, isCustomAvatar, getAvatarsByCategory } from '../config/avatars';
 
-  const avatars = [
-    { id: 'avatar1', icon: User, color: 'text-blue-400', bg: 'bg-blue-500/20' },
-    { id: 'avatar2', icon: Skull, color: 'text-red-400', bg: 'bg-red-500/20' },
-    { id: 'avatar3', icon: Zap, color: 'text-yellow-400', bg: 'bg-yellow-500/20' },
-    { id: 'avatar4', icon: Crown, color: 'text-purple-400', bg: 'bg-purple-500/20' },
-    { id: 'avatar5', icon: Star, color: 'text-green-400', bg: 'bg-green-500/20' },
-    { id: 'avatar6', icon: Ghost, color: 'text-base-muted', bg: 'bg-gray-500/20' },
-    { id: 'avatar7', icon: Flame, color: 'text-orange-400', bg: 'bg-orange-500/20' },
-    { id: 'avatar8', icon: Bot, color: 'text-cyan-400', bg: 'bg-cyan-500/20' },
-    { id: 'avatar9', icon: Sword, color: 'text-slate-400', bg: 'bg-slate-500/20' },
-    { id: 'avatar10', icon: Diamond, color: 'text-pink-400', bg: 'bg-pink-500/20' },
-    { id: 'avatar11', icon: Heart, color: 'text-rose-400', bg: 'bg-rose-500/20' }
-  ];
+const tabs = [
+  { id: 'account', label: 'Account', icon: User },
+  { id: 'security', label: 'Security', icon: Shield },
+  { id: 'gameplay', label: 'Gameplay', icon: Gamepad2 },
+  { id: 'typing', label: 'Typing', icon: Keyboard },
+  { id: 'appearance', label: 'Appearance', icon: Palette },
+  { id: 'audio', label: 'Audio', icon: Volume2 },
+  { id: 'notifications', label: 'Notifications', icon: Bell },
+  { id: 'privacy', label: 'Privacy', icon: Lock },
+  { id: 'advanced', label: 'Advanced', icon: Cpu },
+];
 
   const SectionTitle = ({ title, desc }) => (
     <div className="mb-6">
