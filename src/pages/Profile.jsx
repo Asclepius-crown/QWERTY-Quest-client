@@ -2,15 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { 
-  User, MapPin, Calendar, Trophy, Zap, Target, Award, Clock, 
+  MapPin, Calendar, Trophy, Zap, Target, Award, Clock, 
   Share2, Shield, Crown, Flame, Activity, BarChart2, Keyboard, 
-  ArrowUp, History, Skull, Ghost, Star, Bot, Sword, Diamond, Heart
+  ArrowUp, History
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
 import { useAchievements, ACHIEVEMENTS } from '../contexts/AchievementContext';
 import Navbar from '../components/Navbar';
 import NeuralHeatmap from '../components/NeuralHeatmap';
+import { getUserAvatarDisplay, isCustomAvatar } from '../config/avatars';
 
 const Profile = () => {
   const { user } = useAuth();
@@ -19,25 +20,8 @@ const Profile = () => {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const avatars = [
-    { id: 'avatar1', icon: User, color: 'text-blue-400', bg: 'bg-blue-500/20' },
-    { id: 'avatar2', icon: Skull, color: 'text-red-400', bg: 'bg-red-500/20' },
-    { id: 'avatar3', icon: Zap, color: 'text-yellow-400', bg: 'bg-yellow-500/20' },
-    { id: 'avatar4', icon: Crown, color: 'text-purple-400', bg: 'bg-purple-500/20' },
-    { id: 'avatar5', icon: Star, color: 'text-green-400', bg: 'bg-green-500/20' },
-    { id: 'avatar6', icon: Ghost, color: 'text-base-muted', bg: 'bg-gray-500/20' },
-    { id: 'avatar7', icon: Flame, color: 'text-orange-400', bg: 'bg-orange-500/20' },
-    { id: 'avatar8', icon: Bot, color: 'text-cyan-400', bg: 'bg-cyan-500/20' },
-    { id: 'avatar9', icon: Sword, color: 'text-slate-400', bg: 'bg-slate-500/20' },
-    { id: 'avatar10', icon: Diamond, color: 'text-pink-400', bg: 'bg-pink-500/20' },
-    { id: 'avatar11', icon: Heart, color: 'text-rose-400', bg: 'bg-rose-500/20' }
-  ];
-
-  const currentAvatar = avatars.find(av => av.id === user?.avatar);
-  const isCustomAvatar = user?.avatar?.startsWith('/uploads');
-  const AvatarIcon = currentAvatar?.icon || User;
-  const avatarColor = currentAvatar?.color || 'text-base-muted';
-  const avatarBg = currentAvatar?.bg || 'bg-gradient-to-br from-white/10 to-transparent';
+  const avatarDisplay = getUserAvatarDisplay(user);
+  const isCustom = isCustomAvatar(user?.avatar);
 
   // Fetch History logic from Dashboard
   useEffect(() => {
@@ -98,15 +82,20 @@ const Profile = () => {
             <div className="flex flex-col md:flex-row items-end md:items-center gap-6 pb-6 border-b border-base-content/10">
                 {/* Avatar */}
                 <div className="w-32 h-32 md:w-40 md:h-40 rounded-2xl bg-base-dark border-4 border-base-dark relative z-10 shadow-2xl">
-                    <div className={`w-full h-full rounded-xl ${isCustomAvatar ? '' : avatarBg} flex items-center justify-center border border-base-content/10 overflow-hidden`}>
-                        {isCustomAvatar ? (
-                           <img src={`${import.meta.env.VITE_API_BASE_URL}${user.avatar}`} alt="Avatar" className="w-full h-full object-cover" />
-                        ) : (
-                           <AvatarIcon className={`w-16 h-16 ${avatarColor}`} />
-                        )}
+                    <div className="w-full h-full rounded-xl flex items-center justify-center border border-base-content/10 overflow-hidden bg-base-content/5">
+                        <img 
+                           src={avatarDisplay.imageSrc} 
+                           alt={avatarDisplay.name}
+                           className="w-full h-full object-cover"
+                        />
                     </div>
                     <div className="absolute -bottom-3 -right-3 bg-yellow-500 text-base-dark font-bold px-3 py-1 rounded-full text-sm border-4 border-base-dark">
                         Lvl {user?.stats?.level || 1}
+                    </div>
+                    
+                    {/* Avatar name badge */}
+                    <div className="absolute -top-2 -left-2 bg-base-dark border border-base-content/10 px-2 py-1 rounded-lg shadow-lg">
+                        <span className="text-xs font-bold text-base-content">{avatarDisplay.name}</span>
                     </div>
                 </div>
 

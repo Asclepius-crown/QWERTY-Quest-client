@@ -3,23 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   User, Shield, Gamepad2, Keyboard, Palette, Volume2, Bell, Lock, Cpu, 
   Save, RotateCcw, Trash2, Check, Smartphone, Monitor, Globe, Mail, Eye, Download, AlertTriangle,
-  Skull, Zap, Crown, Star, Ghost, Flame, Bot, Sword, Diamond, Heart, X
+  X
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
 import Navbar from '../components/Navbar';
-
-const tabs = [
-  { id: 'account', label: 'Account', icon: User },
-  { id: 'security', label: 'Security', icon: Shield },
-  { id: 'gameplay', label: 'Gameplay', icon: Gamepad2 },
-  { id: 'typing', label: 'Typing', icon: Keyboard },
-  { id: 'appearance', label: 'Appearance', icon: Palette },
-  { id: 'audio', label: 'Audio', icon: Volume2 },
-  { id: 'notifications', label: 'Notifications', icon: Bell },
-  { id: 'privacy', label: 'Privacy', icon: Lock },
-  { id: 'advanced', label: 'Advanced', icon: Cpu },
-];
+import { AVATARS, getUserAvatarDisplay, isCustomAvatar, getAvatarsByCategory } from '../config/avatars';
 
   const avatars = [
     { id: 'avatar1', icon: User, color: 'text-blue-400', bg: 'bg-blue-500/20' },
@@ -118,11 +107,9 @@ const AccountTab = ({ user, fileInputRef, handleFileChange, handleAvatarSelect }
       phone: user?.phone || ''
     });
     
-    const currentAvatarObj = avatars.find(av => av.id === user?.avatar);
-    const isCustomAvatar = user?.avatar?.startsWith('/uploads');
-    const CurrentIcon = currentAvatarObj?.icon || User;
-    const currentBg = currentAvatarObj?.bg || 'bg-base-navy';
-    const currentColor = currentAvatarObj?.color || 'text-base-muted';
+    const avatarDisplay = getUserAvatarDisplay(user);
+    const isCustom = isCustomAvatar(user?.avatar);
+    const avatarsByCategory = getAvatarsByCategory();
 
     const handleInputChange = (field) => (e) => {
       setFormData(prev => ({ ...prev, [field]: e.target.value }));
@@ -136,12 +123,12 @@ const AccountTab = ({ user, fileInputRef, handleFileChange, handleAvatarSelect }
         <div className="flex flex-col md:flex-row items-start gap-8 mb-8">
             {/* Current Avatar Display */}
             <div className="flex flex-col items-center gap-3">
-                <div className={`w-32 h-32 rounded-2xl ${isCustomAvatar ? 'bg-base-navy' : currentBg} border-2 border-base-content/10 flex items-center justify-center overflow-hidden relative group`}>
-                     {isCustomAvatar ? (
-                        <img src={`${import.meta.env.VITE_API_BASE_URL}${user.avatar}`} alt="Avatar" className="w-full h-full object-cover" />
-                     ) : (
-                        <CurrentIcon className={`w-12 h-12 ${currentColor}`} />
-                     )}
+                <div className="w-32 h-32 rounded-2xl border-2 border-base-content/10 flex items-center justify-center overflow-hidden relative group bg-base-content/5">
+                     <img 
+                        src={avatarDisplay.imageSrc} 
+                        alt={avatarDisplay.name}
+                        className="w-full h-full object-cover"
+                     />
                      
                      {/* Overlay for actions on hover */}
                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-opacity">
@@ -161,6 +148,7 @@ const AccountTab = ({ user, fileInputRef, handleFileChange, handleAvatarSelect }
                      </div>
                 </div>
                 <div className="text-center">
+                    <p className="text-sm font-bold text-base-content mb-1">{avatarDisplay.name}</p>
                     <button 
                         onClick={() => fileInputRef.current?.click()}
                         className="text-xs font-bold text-primary hover:text-primary-hover transition-colors"
@@ -179,26 +167,54 @@ const AccountTab = ({ user, fileInputRef, handleFileChange, handleAvatarSelect }
 
             {/* Avatar Selection Grid */}
             <div className="flex-1">
-                <label className="block text-sm font-medium text-base-muted mb-3">Choose Avatar</label>
-                <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
-                    {avatars.map((av) => {
-                        const Icon = av.icon;
-                        const isSelected = user?.avatar === av.id;
-                        return (
-                            <button
-                                key={av.id}
-                                onClick={() => handleAvatarSelect(av.id)}
-                                className={`aspect-square rounded-xl flex items-center justify-center border-2 transition-all ${
-                                    isSelected 
-                                    ? `${av.bg} border-primary shadow-[0_0_15px_rgba(59,130,246,0.3)] scale-105` 
-                                    : 'bg-base-content/5 border-transparent hover:border-base-content/10 hover:bg-base-content/10'
-                                }`}
-                            >
-                                <Icon className={`w-6 h-6 ${isSelected ? av.color : 'text-base-muted'}`} />
-                            </button>
-                        );
-                    })}
-                </div>
+                <label className="block text-sm font-medium text-base-muted mb-3">Choose Your Avatar</label>
+                
+                {Object.entries(avatarsByCategory).map(([category, categoryAvatars]) => (
+                    <div key={category} className="mb-6">
+                        <h4 className="text-xs font-bold text-base-muted uppercase tracking-wider mb-3">{category}</h4>
+                        <div className="grid grid-cols-5 sm:grid-cols-6 gap-3">
+                            {categoryAvatars.map((avatar) => {
+                                const isSelected = user?.avatar === avatar.id;
+                                return (
+                                    <button
+                                        key={avatar.id}
+                                        onClick={() => handleAvatarSelect(avatar.id)}
+                                        className={`relative aspect-square rounded-xl flex items-center justify-center border-2 transition-all duration-200 overflow-hidden group ${
+                                            isSelected 
+                                            ? `border-[${avatar.themeColor}] shadow-[0_0_20px_rgba(59,130,246,0.4)] scale-110 z-10` 
+                                            : 'border-transparent hover:border-base-content/20 hover:scale-105'
+                                        }`}
+                                        style={{
+                                            borderColor: isSelected ? avatar.themeColor : undefined,
+                                            boxShadow: isSelected ? `0 0 20px ${avatar.themeColor}40` : undefined
+                                        }}
+                                        title={`${avatar.name}${avatar.description ? ` - ${avatar.description}` : ''}`}
+                                    >
+                                        <img 
+                                            src={avatar.image} 
+                                            alt={avatar.name}
+                                            className={`w-full h-full object-cover transition-transform duration-200 ${isSelected ? 'scale-110' : 'group-hover:scale-105'}`}
+                                        />
+                                        
+                                        {/* Selection indicator */}
+                                        {isSelected && (
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end justify-center pb-1">
+                                                <Check className="w-4 h-4 text-white" />
+                                            </div>
+                                        )}
+                                        
+                                        {/* Hover tooltip */}
+                                        <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 whitespace-nowrap">
+                                            <div className="bg-base-navy border border-base-content/20 px-2 py-1 rounded text-xs text-base-content shadow-lg">
+                                                {avatar.name}
+                                            </div>
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                ))}
             </div>
         </div>
 
@@ -261,16 +277,22 @@ const AccountTab = ({ user, fileInputRef, handleFileChange, handleAvatarSelect }
               initial={{ scale: 0.9 }} 
               animate={{ scale: 1 }} 
               exit={{ scale: 0.9 }}
-              className="bg-base-dark border border-white/10 p-2 rounded-2xl max-w-lg w-full aspect-square flex items-center justify-center relative overflow-hidden"
+              className="bg-base-dark border border-white/10 p-2 rounded-2xl max-w-lg w-full aspect-square flex flex-col items-center justify-center relative overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
-              {isCustomAvatar ? (
-                 <img src={`${import.meta.env.VITE_API_BASE_URL}${user.avatar}`} alt="Avatar Preview" className="w-full h-full object-cover rounded-xl" />
-              ) : (
-                 <div className={`w-full h-full flex items-center justify-center rounded-xl ${currentBg}`}>
-                    <CurrentIcon className={`w-48 h-48 ${currentColor}`} />
-                 </div>
-              )}
+              <div className="flex-1 w-full flex items-center justify-center p-4">
+                 <img 
+                    src={avatarDisplay.imageSrc} 
+                    alt={avatarDisplay.name}
+                    className="w-full h-full object-contain rounded-xl"
+                 />
+              </div>
+              <div className="absolute bottom-4 left-0 right-0 text-center">
+                 <p className="text-xl font-bold text-white">{avatarDisplay.name}</p>
+                 {!isCustom && avatarDisplay.avatar?.description && (
+                    <p className="text-sm text-base-muted mt-1">{avatarDisplay.avatar.description}</p>
+                 )}
+              </div>
                <button 
                 onClick={() => setIsPreviewOpen(false)}
                 className="absolute top-4 right-4 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors"

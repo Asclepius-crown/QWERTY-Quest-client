@@ -6,9 +6,17 @@ import { useNavigate } from 'react-router-dom';
 const Hero = () => {
   const [champion, setChampion] = useState(null);
   const [feed, setFeed] = useState([]);
+  const [stats, setStats] = useState({
+    onlinePlayers: 0,
+    totalRaces: 0,
+    countries: 0,
+    matchmakingTime: 0.02
+  });
+  const [statsLoading, setStatsLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Fetch leaderboard
     fetch(`${import.meta.env.VITE_API_BASE_URL}/races/leaderboard`)
       .then(res => res.json())
       .then(data => {
@@ -18,6 +26,18 @@ const Hero = () => {
         }
       })
       .catch(err => console.error(err));
+
+    // Fetch statistics
+    fetch(`${import.meta.env.VITE_API_BASE_URL}/stats`)
+      .then(res => res.json())
+      .then(data => {
+        setStats(data);
+        setStatsLoading(false);
+      })
+      .catch(err => {
+        console.error('Failed to fetch stats:', err);
+        setStatsLoading(false);
+      });
   }, []);
 
   const handleDethrone = () => {
@@ -60,7 +80,11 @@ const Hero = () => {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
               </span>
-              4,239 players online now
+              {statsLoading ? (
+                <span className="animate-pulse">Loading...</span>
+              ) : (
+                `${stats.onlinePlayers.toLocaleString()} player${stats.onlinePlayers !== 1 ? 's' : ''} online now`
+              )}
             </motion.div>
 
             <motion.h1 
@@ -111,15 +135,21 @@ const Hero = () => {
               className="flex gap-8 pt-8 border-t border-base-content/5"
             >
               <div>
-                <div className="text-2xl font-bold text-base-content">120+</div>
+                <div className="text-2xl font-bold text-base-content">
+                  {statsLoading ? '...' : `${stats.countries}+`}
+                </div>
                 <div className="text-sm text-base-muted uppercase tracking-wider">Countries</div>
               </div>
               <div>
-                <div className="text-2xl font-bold text-base-content">1M+</div>
+                <div className="text-2xl font-bold text-base-content">
+                  {statsLoading ? '...' : `${(stats.totalRaces / 1000).toFixed(1)}K+`}
+                </div>
                 <div className="text-sm text-base-muted uppercase tracking-wider">Races Run</div>
               </div>
               <div>
-                <div className="text-2xl font-bold text-base-content">0.02s</div>
+                <div className="text-2xl font-bold text-base-content">
+                  {statsLoading ? '...' : `${stats.matchmakingTime}s`}
+                </div>
                 <div className="text-sm text-base-muted uppercase tracking-wider">Matchmaking</div>
               </div>
             </motion.div>
