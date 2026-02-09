@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Trophy, Zap, Target, TrendingUp, Calendar, Shield, Crown, Medal, Lock, ChevronRight, Award, Activity, BarChart3 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import Navbar from '../components/Navbar';
+import { getBadgeByRank, getUserRankBadge, BADGES_SPRITE } from '../config/badges';
 
 const ranks = [
   { id: 'bronze', name: 'Bronze', color: 'text-orange-700', border: 'border-orange-700', bg: 'bg-orange-900/20', shadow: 'shadow-orange-900/50', minElo: 0, reward: 'Basic Badge' },
@@ -42,6 +43,9 @@ const Rank = () => {
   const currentElo = rankedStats?.elo || user?.stats?.elo || 1000;
   const currentRankName = rankedStats?.rank || user?.stats?.rank || 'Bronze';
   
+  // Get custom badge for current rank
+  const currentBadge = getUserRankBadge({ stats: { rank: currentRankName } });
+  
   // Find current and next rank
   const currentRankIndex = ranks.findIndex(r => r.name === currentRankName);
   const currentRank = ranks[currentRankIndex] || ranks[0];
@@ -69,8 +73,18 @@ const Rank = () => {
             <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 ${currentRank.bg} blur-[100px] rounded-full opacity-50`}></div>
             
                 <div className="relative z-10">
-                <div className={`inline-flex p-6 rounded-full ${currentRank.bg} border-4 ${currentRank.border} mb-6 shadow-2xl ${currentRank.shadow}`}>
-                    <Trophy className={`w-20 h-20 ${currentRank.color}`} />
+                <div className={`inline-flex p-4 rounded-full ${currentRank.bg} border-4 ${currentRank.border} mb-6 shadow-2xl ${currentRank.shadow}`}>
+                    {/* Custom Rank Badge */}
+                    <div 
+                        className="w-24 h-24 md:w-28 md:h-28"
+                        style={{
+                            backgroundImage: `url(${BADGES_SPRITE})`,
+                            backgroundPosition: `${currentBadge.badge.spritePosition.x}% ${currentBadge.badge.spritePosition.y}%`,
+                            backgroundSize: '300% 200%',
+                            backgroundRepeat: 'no-repeat',
+                            filter: `drop-shadow(0 0 20px ${currentBadge.badge.glowColor})`
+                        }}
+                    />
                 </div>
                 <h1 className={`text-5xl md:text-7xl font-black uppercase tracking-tighter ${currentRank.color} drop-shadow-lg`}>
                     {currentRank.name}
@@ -148,8 +162,18 @@ const Rank = () => {
                                             : 'bg-base-content/5 border-base-content/5 opacity-50'
                                     }`}
                                 >
-                                    <div className={`p-2 rounded-full ${rank.bg} ${isUnlocked ? rank.color : 'text-base-muted'}`}>
-                                        {isUnlocked ? <Medal className="w-6 h-6" /> : <Lock className="w-6 h-6" />}
+                                    <div className={`p-1 rounded-full ${rank.bg} ${isUnlocked ? rank.color : 'text-base-muted'}`}>
+                                        {/* Custom Rank Badge */}
+                                        <div 
+                                            className="w-10 h-10 md:w-12 md:h-12"
+                                            style={{
+                                                backgroundImage: `url(${BADGES_SPRITE})`,
+                                                backgroundPosition: `${getBadgeByRank(rank.name).spritePosition.x}% ${getBadgeByRank(rank.name).spritePosition.y}%`,
+                                                backgroundSize: '300% 200%',
+                                                backgroundRepeat: 'no-repeat',
+                                                filter: isUnlocked ? `drop-shadow(0 0 10px ${getBadgeByRank(rank.name).glowColor})` : 'grayscale(100%)'
+                                            }}
+                                        />
                                     </div>
                                     <div className="flex-1">
                                         <div className="flex justify-between items-center">

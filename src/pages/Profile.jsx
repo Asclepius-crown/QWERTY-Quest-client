@@ -13,6 +13,7 @@ import Navbar from '../components/Navbar';
 import NeuralHeatmap from '../components/NeuralHeatmap';
 import AchievementCard from '../components/AchievementCard';
 import { getUserAvatarDisplay, isCustomAvatar } from '../config/avatars';
+import { getUserRankBadge, BADGES_SPRITE } from '../config/badges';
 
 const Profile = () => {
   const { user } = useAuth();
@@ -29,6 +30,7 @@ const Profile = () => {
 
   const avatarDisplay = getUserAvatarDisplay(user);
   const isCustom = isCustomAvatar(user?.avatar);
+  const rankBadge = getUserRankBadge(user);
   
   // Filter achievements
   const filteredAchievements = Object.values(ACHIEVEMENTS).filter(achievement => {
@@ -177,8 +179,24 @@ const Profile = () => {
             >
                 <h3 className="text-base-muted text-xs font-bold uppercase tracking-widest mb-4">Competitive Rank</h3>
                 <div className="flex items-center gap-4 mb-6">
-                    <div className="w-16 h-16 rounded-full bg-yellow-500/20 flex items-center justify-center border-2 border-yellow-500/50 shadow-[0_0_20px_rgba(234,179,8,0.2)]">
-                        <Trophy className="w-8 h-8 text-yellow-400" />
+                    <div 
+                        className="w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center border-2 shadow-[0_0_20px_rgba(234,179,8,0.2)]"
+                        style={{ 
+                            backgroundColor: rankBadge.badge.themeColor + '20',
+                            borderColor: rankBadge.badge.themeColor + '50'
+                        }}
+                    >
+                        {/* Custom Rank Badge */}
+                        <div 
+                            className="w-14 h-14 md:w-16 md:h-16"
+                            style={{
+                                backgroundImage: `url(${BADGES_SPRITE})`,
+                                backgroundPosition: `${rankBadge.badge.spritePosition.x}% ${rankBadge.badge.spritePosition.y}%`,
+                                backgroundSize: '300% 200%',
+                                backgroundRepeat: 'no-repeat',
+                                filter: `drop-shadow(0 0 15px ${rankBadge.badge.glowColor})`
+                            }}
+                        />
                     </div>
                     <div>
                         <div className="text-2xl font-bold text-base-content">{user?.stats?.rank || 'Bronze'} I</div>
