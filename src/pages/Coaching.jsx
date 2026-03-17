@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Brain, Target, TrendingUp, BookOpen, Zap, AlertTriangle, Award, Activity, ChevronRight, Play, RefreshCw } from 'lucide-react';
 import Navbar from '../components/Navbar';
+import NeuralHeatmap from '../components/NeuralHeatmap';
 
 const Coaching = () => {
   const [profile, setProfile] = useState(null);
