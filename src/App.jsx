@@ -12,6 +12,7 @@ import Rank from './pages/Rank';
 import Settings from './pages/Settings';
 import Network from './pages/Network';
 import RankedLobby from './pages/RankedLobby';
+import Coaching from './pages/Coaching';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -24,6 +25,7 @@ function App() {
         <Route path="/how-it-works" element={<HowItWorks />} />
         <Route path="/play" element={<ProtectedRoute><Play /></ProtectedRoute>} />
         <Route path="/practice" element={<ProtectedRoute><Practice /></ProtectedRoute>} />
+        <Route path="/coaching" element={<ProtectedRoute><Coaching /></ProtectedRoute>} />
         <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/rank" element={<ProtectedRoute><Rank /></ProtectedRoute>} />

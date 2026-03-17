@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Target, RotateCcw, Award, Settings, Keyboard, Zap, ChevronRight, Play } from 'lucide-react';
+import { Target, RotateCcw, Award, Settings, Keyboard, Zap, ChevronRight, Play, Brain, BookOpen } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import VirtualKeyboard from '../components/VirtualKeyboard';
+import { useAuth } from '../contexts/AuthContext';
 
 const drills = {
   fundamentals: [
@@ -21,6 +22,7 @@ const drills = {
 };
 
 const Practice = () => {
+  const { user } = useAuth();
   const [category, setCategory] = useState('fundamentals');
   const [activeDrill, setActiveDrill] = useState(drills.fundamentals[0]);
   const [input, setInput] = useState('');
@@ -34,12 +36,80 @@ const Practice = () => {
   const [isErrorKey, setIsErrorKey] = useState(false);
   const inputRef = useRef(null);
 
+  // Coaching integration
+  const [coachingMode, setCoachingMode] = useState(false);
+  const [coachingInsights, setCoachingInsights] = useState(null);
+  const [customPracticeText, setCustomPracticeText] = useState('');
+  const [generating, setGenerating] = useState(false);
+
+  // Load coaching insights
+  const loadCoachingInsights = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/coaching/insights?period=30`, {
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setCoachingInsights(data);
+      }
+    } catch (err) {
+      console.error('Failed to load coaching insights:', err);
+    }
+  };
+
+  // Generate personalized practice text
+  const generatePersonalizedPractice = async () => {
+    if (!coachingInsights?.commonWeaknesses?.length) {
+      await loadCoachingInsights();
+      return;
+    }
+
+    setGenerating(true);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/coaching/generate-practice`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          weaknesses: coachingInsights.commonWeaknesses.slice(0, 3),
+          length: 200
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setCustomPracticeText(data.practiceText);
+        setCoachingMode(true);
+        
+        // Create a custom drill from the generated text
+        const customDrill = {
+          id: 'coaching-practice',
+          label: 'AI Coaching Practice',
+          text: data.practiceText
+        };
+        setActiveDrill(customDrill);
+        reset();
+      }
+    } catch (err) {
+      console.error('Failed to generate practice text:', err);
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   // Focus input on mount/change
   useEffect(() => {
     if (!isFinished) {
       inputRef.current?.focus();
     }
   }, [activeDrill, isFinished]);
+
+  // Load coaching insights on component mount
+  useEffect(() => {
+    if (user) {
+      loadCoachingInsights();
+    }
+  }, [user]);
 
   const startDrill = (drill) => {
     setActiveDrill(drill);
@@ -137,43 +207,113 @@ const Practice = () => {
             {/* Sidebar: Drill Selection */}
             <div className="lg:col-span-1 space-y-6">
               <div className="glass-card p-4 rounded-xl border border-base-content/5">
-                <h3 className="text-sm font-bold text-base-muted uppercase tracking-widest mb-4">Drill Type</h3>
+                <h3 className="text-sm font-bold text-base-muted uppercase tracking-widest mb-4">Practice Mode</h3>
                 <div className="space-y-2">
-                  {Object.keys(drills).map(cat => (
-                    <button
-                      key={cat}
-                      onClick={() => setCategory(cat)}
-                      className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-all flex items-center justify-between ${
-                        category === cat 
-                        ? 'bg-primary/20 text-base-content border border-primary/20' 
-                        : 'text-base-muted hover:bg-base-content/5 hover:text-base-content'
-                      }`}
-                    >
-                      {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                      {category === cat && <ChevronRight className="w-4 h-4" />}
-                    </button>
-                  ))}
+                  <button
+                    onClick={() => setCoachingMode(false)}
+                    className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-all flex items-center justify-between ${
+                      !coachingMode 
+                      ? 'bg-primary/20 text-base-content border border-primary/20' 
+                      : 'text-base-muted hover:bg-base-content/5 hover:text-base-content'
+                    }`}
+                  >
+                    Standard Drills
+                    {!coachingMode && <ChevronRight className="w-4 h-4" />}
+                  </button>
+                  <button
+                    onClick={() => setCoachingMode(true)}
+                    className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-all flex items-center justify-between ${
+                      coachingMode 
+                      ? 'bg-primary/20 text-base-content border border-primary/20' 
+                      : 'text-base-muted hover:bg-base-content/5 hover:text-base-content'
+                    }`}
+                  >
+                    <Brain className="w-4 h-4" />
+                    AI Coaching
+                    {coachingMode && <ChevronRight className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
 
-              <div className="glass-card p-4 rounded-xl border border-base-content/5">
-                <h3 className="text-sm font-bold text-base-muted uppercase tracking-widest mb-4">Select Drill</h3>
-                <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                  {drills[category].map(drill => (
-                    <button
-                      key={drill.id}
-                      onClick={() => startDrill(drill)}
-                      className={`w-full text-left px-4 py-2 rounded-lg text-sm transition-all ${
-                        activeDrill.id === drill.id 
-                        ? 'bg-base-content/10 text-primary font-bold' 
-                        : 'text-base-muted hover:bg-base-content/5'
-                      }`}
-                    >
-                      {drill.label}
-                    </button>
-                  ))}
+              {!coachingMode ? (
+                <>
+                  <div className="glass-card p-4 rounded-xl border border-base-content/5">
+                    <h3 className="text-sm font-bold text-base-muted uppercase tracking-widest mb-4">Drill Type</h3>
+                    <div className="space-y-2">
+                      {Object.keys(drills).map(cat => (
+                        <button
+                          key={cat}
+                          onClick={() => setCategory(cat)}
+                          className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-all flex items-center justify-between ${
+                            category === cat 
+                            ? 'bg-primary/20 text-base-content border border-primary/20' 
+                            : 'text-base-muted hover:bg-base-content/5 hover:text-base-content'
+                          }`}
+                        >
+                          {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                          {category === cat && <ChevronRight className="w-4 h-4" />}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="glass-card p-4 rounded-xl border border-base-content/5">
+                    <h3 className="text-sm font-bold text-base-muted uppercase tracking-widest mb-4">Select Drill</h3>
+                    <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                      {drills[category].map(drill => (
+                        <button
+                          key={drill.id}
+                          onClick={() => startDrill(drill)}
+                          className={`w-full text-left px-4 py-2 rounded-lg text-sm transition-all ${
+                            activeDrill.id === drill.id 
+                            ? 'bg-base-content/10 text-primary font-bold' 
+                            : 'text-base-muted hover:bg-base-content/5'
+                          }`}
+                        >
+                          {drill.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="glass-card p-4 rounded-xl border border-base-content/5">
+                  <h3 className="text-sm font-bold text-base-muted uppercase tracking-widest mb-4">AI Coaching</h3>
+                  
+                  {coachingInsights?.commonWeaknesses?.length > 0 ? (
+                    <div className="space-y-3">
+                      <div className="text-xs text-base-muted mb-3">
+                        Based on your recent performance:
+                      </div>
+                      {coachingInsights.commonWeaknesses.slice(0, 3).map((weakness, idx) => (
+                        <div key={idx} className="p-2 bg-base-content/5 rounded text-xs">
+                          <div className="font-medium text-base-content">{weakness.description}</div>
+                        </div>
+                      ))}
+                      
+                      <button
+                        onClick={generatePersonalizedPractice}
+                        disabled={generating}
+                        className="w-full mt-4 bg-primary hover:bg-primary-hover disabled:opacity-50 text-white py-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all"
+                      >
+                        {generating ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        ) : (
+                          <BookOpen className="w-4 h-4" />
+                        )}
+                        Generate Practice
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="text-center py-4">
+                      <Brain className="w-8 h-8 text-base-muted mx-auto mb-2" />
+                      <div className="text-sm text-base-muted">
+                        Play more races to unlock AI coaching insights
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Main Area */}
@@ -198,7 +338,14 @@ const Practice = () => {
               </div>
 
               {/* Typing Area */}
-              <div className="glass-card p-8 rounded-2xl border border-base-content/5 relative min-h-[200px] flex flex-col justify-center">
+              <div className={`glass-card p-8 rounded-2xl border border-base-content/5 relative min-h-[200px] flex flex-col justify-center ${coachingMode ? 'ring-2 ring-primary/50' : ''}`}>
+                {coachingMode && (
+                  <div className="absolute top-4 left-4 flex items-center gap-2 text-xs font-bold text-primary bg-primary/10 px-2 py-1 rounded-full">
+                    <Brain className="w-3 h-3" />
+                    AI COACHING MODE
+                  </div>
+                )}
+                
                 {!isFinished ? (
                   <>
                     <div 
@@ -218,7 +365,8 @@ const Practice = () => {
                       spellCheck="false"
                     />
                     <div className="absolute top-4 right-4 flex items-center gap-2 text-xs text-base-muted">
-                      <Keyboard className="w-4 h-4" /> Focus Mode
+                      <Keyboard className="w-4 h-4" /> 
+                      {coachingMode ? 'Coaching Focus Mode' : 'Focus Mode'}
                     </div>
                   </>
                 ) : (
@@ -230,8 +378,15 @@ const Practice = () => {
                     >
                       <Award className="w-12 h-12 text-green-400" />
                     </motion.div>
-                    <h2 className="text-3xl font-bold text-base-content mb-2">Drill Complete!</h2>
-                    <p className="text-base-muted mb-8">Great focus. Here is how you did.</p>
+                    <h2 className="text-3xl font-bold text-base-content mb-2">
+                      {coachingMode ? 'Coaching Session Complete!' : 'Drill Complete!'}
+                    </h2>
+                    <p className="text-base-muted mb-8">
+                      {coachingMode 
+                        ? 'Great work on your weak areas! Keep practicing to improve.'
+                        : 'Great focus. Here is how you did.'
+                      }
+                    </p>
                     
                     <div className="flex justify-center gap-12 mb-8">
                       <div>
@@ -244,12 +399,26 @@ const Practice = () => {
                       </div>
                     </div>
 
-                    <button 
-                      onClick={reset}
-                      className="px-8 py-3 bg-primary hover:bg-primary-hover text-white rounded-xl font-bold flex items-center gap-2 mx-auto transition-all"
-                    >
-                      <RotateCcw className="w-5 h-5" /> Repeat Drill
-                    </button>
+                    <div className="flex gap-3 justify-center">
+                      <button 
+                        onClick={reset}
+                        className="px-6 py-3 bg-primary hover:bg-primary-hover text-white rounded-xl font-bold flex items-center gap-2 transition-all"
+                      >
+                        <RotateCcw className="w-5 h-5" /> Repeat {coachingMode ? 'Session' : 'Drill'}
+                      </button>
+                      {coachingMode && (
+                        <button 
+                          onClick={() => {
+                            setCoachingMode(false);
+                            setActiveDrill(drills.fundamentals[0]);
+                            reset();
+                          }}
+                          className="px-6 py-3 bg-base-content/10 hover:bg-base-content/20 text-base-content rounded-xl font-bold transition-all"
+                        >
+                          Back to Standard
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

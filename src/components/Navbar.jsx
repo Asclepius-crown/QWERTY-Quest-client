@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Keyboard, Menu, X, LogOut, ChevronDown,
   Shield, Settings, UserCircle, 
-  Trophy, Target, Palette, Bell, Users as UsersIcon, HelpCircle, Bug, Share2
+  Trophy, Target, Palette, Bell, Users as UsersIcon, HelpCircle, Bug, Share2, Brain
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -88,6 +88,7 @@ const Navbar = () => {
           {[
             { label: 'Home', to: '/' },
             { label: 'Play', to: '/play' },
+            { label: 'Coaching', to: '/coaching' },
             { label: 'Ranked', to: '/ranked-lobby' },
             { label: 'Leaderboard', to: '/leaderboard' },
             { label: 'How it Works', to: '/how-it-works' }
@@ -178,7 +179,7 @@ const Navbar = () => {
                       {/* Zone 2: Core Player Actions */}
                       <div className="mb-2">
                         <div className="px-3 py-1 text-[10px] font-bold text-base-muted uppercase tracking-widest">Menu</div>
-                         <MenuLink to="/profile" icon={UserCircle} label="My Profile & Stats" onClick={() => setProfileOpen(false)} />
+                        <MenuLink to="/profile" icon={UserCircle} label="My Profile & Stats" onClick={() => setProfileOpen(false)} />
                          <Link 
                            to="/network" 
                            onClick={() => setProfileOpen(false)}
@@ -194,6 +195,7 @@ const Navbar = () => {
                          </Link>
                         <MenuLink to="/leaderboard" icon={Trophy} label="My Rank" onClick={() => setProfileOpen(false)} />
                         <MenuLink to="/practice" icon={Target} label="Practice Mode" onClick={() => setProfileOpen(false)} />
+                        <MenuLink to="/coaching" icon={Brain} label="AI Coaching" onClick={() => setProfileOpen(false)} />
                       </div>
 
                       <div className="h-px bg-base-content/5 my-1 mx-2"></div>
@@ -250,25 +252,26 @@ const Navbar = () => {
         </button>
       </div>
 
-       {/* Mobile Menu */}
-       {isOpen && (
-         <div className="md:hidden absolute top-full left-0 w-full bg-base-dark/95 backdrop-blur-xl border-t border-base-content/10 p-6 flex flex-col gap-4 shadow-2xl h-screen z-40">
-            {[
-              { label: 'Home', to: '/' },
-              { label: 'Play', to: '/play' },
-              { label: 'Ranked', to: '/ranked-lobby' },
-              { label: 'Leaderboard', to: '/leaderboard' },
-              { label: 'How it Works', to: '/how-it-works' }
-            ].map((item) => (
-             <Link
-               key={item.label}
-               to={item.to}
-               className="text-base-content/80 hover:text-base-content py-4 text-xl font-medium border-b border-base-content/5 last:border-0 block text-center"
-               onClick={() => setIsOpen(false)}
-             >
-               {item.label}
-             </Link>
-           ))}
+        {/* Mobile Menu */}
+        {isOpen && (
+          <div className="md:hidden absolute top-full left-0 w-full bg-base-dark/95 backdrop-blur-xl border-t border-base-content/10 p-6 flex flex-col gap-4 shadow-2xl h-screen z-40">
+             {[
+               { label: 'Home', to: '/' },
+               { label: 'Play', to: '/play' },
+               { label: 'Coaching', to: '/coaching' },
+               { label: 'Ranked', to: '/ranked-lobby' },
+               { label: 'Leaderboard', to: '/leaderboard' },
+               { label: 'How it Works', to: '/how-it-works' }
+             ].map((item) => (
+              <Link
+                key={item.label}
+                to={item.to}
+                className="text-base-content/80 hover:text-base-content py-4 text-xl font-medium border-b border-base-content/5 last:border-0 block text-center"
+                onClick={() => setIsOpen(false)}
+              >
+                {item.label}
+              </Link>
+            ))}
            <div className="flex flex-col gap-4 mt-8">
              {isLoggedIn ? (
                <>

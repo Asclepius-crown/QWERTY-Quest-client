@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, useAnimation } from 'framer-motion';
-import { Play as PlayIcon, RotateCcw, Trophy, Zap, Target, Clock, Users, User, Keyboard, Sword, Github, Code, Skull } from 'lucide-react';
+import { Play as PlayIcon, RotateCcw, Trophy, Zap, Target, Clock, Users, User, Keyboard, Sword, Github, Code, Skull, Brain } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { useAchievements } from '../contexts/AchievementContext';
@@ -59,14 +59,23 @@ const Play = () => {
   const [streak, setStreak] = useState(0);
   const [chaosEffect, setChaosEffect] = useState(null);
   const [raceResults, setRaceResults] = useState(null);
-
-  // Ghost & Shadow Racing
   const [ghostIndex, setGhostIndex] = useState(0);
-  const historyRef = useRef([]);
-  const opponentsRef = useRef({}); // Store latest server data for interpolation
+
+  // Coaching data tracking
+  const [lastKeyTime, setLastKeyTime] = useState(0);
+  const [keyTransitionTimes, setKeyTransitionTimes] = useState({});
+  const [errorLocations, setErrorLocations] = useState([]);
+  const [correctionAttempts, setCorrectionAttempts] = useState(0);
+
+  // Coaching real-time feedback
+  const [coachingInsights, setCoachingInsights] = useState(null);
+  const [slowPairs, setSlowPairs] = useState({});
+  const [currentHint, setCurrentHint] = useState(null);
 
   const inputRef = useRef(null);
   const audioContextRef = useRef(null);
+  const historyRef = useRef([]);
+  const opponentsRef = useRef({});
 
   // Chaos Mode Logic
   useEffect(() => {
@@ -109,7 +118,32 @@ const Play = () => {
     return 'bg-base-dark';
   };
 
-  // Game Loop: Ghost & Optimistic UI
+  // Load coaching insights for real-time feedback
+  const loadCoachingInsights = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/coaching/insights?period=30`, {
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setCoachingInsights(data);
+        
+        // Create map of slow pairs for quick lookup
+        const pairs = {};
+        data.commonWeaknesses?.forEach(weakness => {
+          if (weakness.type === 'slowTransition' && weakness.pair) {
+            pairs[weakness.pair] = {
+              avgTime: weakness.averageTime,
+              description: weakness.description
+            };
+          }
+        });
+        setSlowPairs(pairs);
+      }
+    } catch (err) {
+      console.error('Failed to load coaching insights:', err);
+    }
+  };
   useEffect(() => {
     let animationFrameId;
     
@@ -163,20 +197,10 @@ const Play = () => {
   };
 
   useEffect(() => {
-    if (location.state?.mode === 'ghost') {
-      setMode('ghost');
-      setText(location.state.textContent);
-      setTextId(location.state.textId);
-      setOpponents([{
-        userId: 'ghost-bot',
-        username: location.state.ghostProfile.username,
-        wpm: location.state.ghostProfile.wpm,
-        accuracy: location.state.ghostProfile.accuracy,
-        currentIndex: 0,
-        isGhost: true
-      }]);
+    if (user) {
+      loadCoachingInsights();
     }
-  }, [location.state]);
+  }, [user]);
 
   useEffect(() => {
     let interval;
@@ -385,7 +409,12 @@ const Play = () => {
           accuracy: accuracy || 0,
           errors,
           timeTaken,
-          replayData: historyRef.current
+          replayData: historyRef.current,
+          coachingData: {
+            keyTransitionTimes,
+            errorLocations,
+            correctionAttempts
+          }
         })
       });
 
@@ -399,7 +428,7 @@ const Play = () => {
     } catch (err) {
       console.error('Failed to save results:', err);
     }
-  }, [user, timeLeft, textId, wpm, accuracy, errors, mode, checkAchievements]);
+  }, [user, timeLeft, textId, wpm, accuracy, errors, mode, checkAchievements, keyTransitionTimes, errorLocations, correctionAttempts]);
 
   useEffect(() => {
     if (gameState === 'completed' && user) {
@@ -415,6 +444,11 @@ const Play = () => {
           errors,
           timeTaken,
           replayData: historyRef.current,
+          coachingData: {
+            keyTransitionTimes,
+            errorLocations,
+            correctionAttempts
+          },
           mode: mode
         });
       }
@@ -530,54 +564,95 @@ const Play = () => {
         return; 
     }
 
+    const currentTime = Date.now();
     const lastChar = value.slice(-1);
+    const previousChar = text[currentIndex - 1] || '';
+    const targetChar = text[currentIndex];
 
-    if (lastChar === text[currentIndex]) {
-      playKeySound();
-      let nextIndex = currentIndex + 1;
-      let nextUserInput = value;
+    // Calculate transition time between keys
+    let transitionTime = 0;
+    if (startTime && lastKeyTime > 0) {
+      transitionTime = currentTime - lastKeyTime;
+    }
+    setLastKeyTime(currentTime);
 
-      // Auto-indentation logic
-      if (lastChar === '\n' && (mode === 'github' || language !== 'plain')) {
-          // Check if next characters are whitespace and skip them automatically
-          let i = nextIndex;
-          while (i < text.length && (text[i] === ' ' || text[i] === '\t')) {
-              i++;
-          }
-          if (i > nextIndex) {
-              const indentation = text.substring(nextIndex, i);
-              nextIndex = i;
-              nextUserInput += indentation;
-          }
-      }
+    // Track key pair transitions
+    if (previousChar && lastChar === targetChar) {
+      const pairKey = `${previousChar}${targetChar}`;
+      setKeyTransitionTimes(prev => ({
+        ...prev,
+        [pairKey]: [...(prev[pairKey] || []), transitionTime]
+      }));
+    }
 
-      // Record History
+    if (lastChar === targetChar) {
+      // Correct character
+      const newIndex = currentIndex + 1;
+
+      // Record History with enhanced coaching data
       if (startTime) {
         historyRef.current.push({
-            time: Date.now() - startTime,
-            index: nextIndex
+            time: currentTime - startTime,
+            index: newIndex,
+            keyPressed: lastChar,
+            previousKey: text[currentIndex - 1] || '',
+            transitionTime: transitionTime,
+            isError: false,
+            correctionTime: 0
         });
       }
 
-      setCurrentIndex(nextIndex);
-      setUserInput(nextUserInput);
+      // Check for slow pair and show hint
+      const previousChar = text[currentIndex - 1] || '';
+      const currentChar = targetChar;
+      const pair = previousChar + currentChar;
+      if (slowPairs[pair]) {
+        setCurrentHint({
+          pair: pair,
+          avgTime: slowPairs[pair].avgTime,
+          description: slowPairs[pair].description || `Slow transition: '${pair}' - focus on smooth flow`
+        });
+        // Clear hint after 3 seconds
+        setTimeout(() => setCurrentHint(null), 3000);
+      }
+
+      setCurrentIndex(newIndex);
+      setUserInput(value);
       setStreak(prev => prev + 1);
       
       if (settings.caretAnimation) {
         controls.start('pulse');
       }
 
-      if (nextIndex >= text.length) {
+      if (newIndex >= text.length) {
         setGameState('completed');
         playCompleteSound();
       }
     } else if (value.length > userInput.length) {
+      // Error occurred
+      const errorLocation = currentIndex;
+      setErrorLocations(prev => [...prev, errorLocation]);
+      
       if (settings.errorSounds) {
         // We could add a specific error sound here, currently only visual
       }
       
       const newErrors = errors + 1;
       setErrors(newErrors);
+      
+      // Record error in history
+      if (startTime) {
+        historyRef.current.push({
+            time: currentTime - startTime,
+            index: currentIndex,
+            keyPressed: lastChar,
+            previousKey: text[currentIndex - 1] || '',
+            transitionTime: transitionTime,
+            isError: true,
+            correctionTime: 0,
+            errorLocation: errorLocation
+        });
+      }
       
       if (isPermadeath && newErrors >= 3) {
           setGameState('completed'); // Or failed state if supported
@@ -587,12 +662,18 @@ const Play = () => {
 
       setUserInput(value);
       setStreak(0);
+      setCurrentHint(null); // Clear hint on error
       if (settings.caretAnimation) {
         controls.start('shake');
       }
     } else {
       setUserInput(value);
     }
+
+    // Update accuracy with coaching-aware calculation
+    const totalKeystrokes = currentIndex + errors + 1;
+    const correctedAccuracy = Math.round(((currentIndex + 1 - correctionAttempts) / totalKeystrokes) * 100);
+    setAccuracy(correctedAccuracy);
   };
 
   const resetGame = () => {
@@ -610,6 +691,11 @@ const Play = () => {
     setChaosEffect(null);
     setGhostIndex(0);
     setRaceResults(null);
+    setLastKeyTime(0);
+    setKeyTransitionTimes({});
+    setErrorLocations([]);
+    setCorrectionAttempts(0);
+    setCurrentHint(null);
     historyRef.current = [];
     opponentsRef.current = {};
   };
@@ -943,16 +1029,25 @@ const Play = () => {
                 </div>
               </div>
 
-              {/* Text Display */}
-              <div className={`glass-card p-8 rounded-xl border border-base-content/5 relative transition-all duration-500 ${chaosEffect ? chaosEffect.class : ''}`}>
-                {chaosEffect && (
-                  <div className="absolute top-2 right-2 text-xs font-bold text-red-500 animate-pulse bg-red-900/20 px-2 py-1 rounded">
-                    CHAOS EVENT: {chaosEffect.name}
-                  </div>
-                )}
-                <div className="text-lg md:text-xl leading-relaxed font-mono mb-6 min-h-[120px] md:min-h-[150px] whitespace-pre-wrap">
-                  {renderText()}
-                </div>
+               {/* Text Display */}
+               <div className={`glass-card p-8 rounded-xl border border-base-content/5 relative transition-all duration-500 ${chaosEffect ? chaosEffect.class : ''}`}>
+                 {chaosEffect && (
+                   <div className="absolute top-2 right-2 text-xs font-bold text-red-500 animate-pulse bg-red-900/20 px-2 py-1 rounded">
+                     CHAOS EVENT: {chaosEffect.name}
+                   </div>
+                 )}
+                 {currentHint && (
+                   <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg text-sm text-blue-300 animate-pulse">
+                     <div className="flex items-center gap-2">
+                       <Brain className="w-4 h-4" />
+                       <span className="font-medium">{currentHint.description}</span>
+                       <span className="text-xs text-blue-400">({Math.round(currentHint.avgTime)}ms avg)</span>
+                     </div>
+                   </div>
+                 )}
+                 <div className="text-lg md:text-xl leading-relaxed font-mono mb-6 min-h-[120px] md:min-h-[150px] whitespace-pre-wrap">
+                   {renderText()}
+                 </div>
                 <motion.input
                   ref={inputRef}
                   variants={inputVariants}

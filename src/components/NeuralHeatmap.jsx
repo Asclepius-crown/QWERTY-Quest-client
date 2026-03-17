@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Activity, AlertTriangle, Zap } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 const keys = [
   ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
@@ -8,35 +9,66 @@ const keys = [
   ['Z', 'X', 'C', 'V', 'B', 'N', 'M']
 ];
 
-const getKeyStats = (key) => {
-  // Deterministic mock data based on char code for consistency
-  const code = key.charCodeAt(0);
-  const errorRate = (code % 5) * 0.8; // 0 to 4%
-  const speed = 100 - (code % 20); // ms latency
-  
+const getKeyStats = (key, insights) => {
+  // Find real data from coaching insights
+  const keyLower = key.toLowerCase();
+  let errorRate = 0;
+  let avgTime = 150; // Default average time
+  let occurrences = 0;
+
+  if (insights?.commonWeaknesses) {
+    // Look for weaknesses related to this key
+    const keyWeaknesses = insights.commonWeaknesses.filter(w =>
+      w.pair?.toLowerCase().includes(keyLower) ||
+      w.description?.toLowerCase().includes(keyLower)
+    );
+
+    if (keyWeaknesses.length > 0) {
+      // Calculate error rate based on weakness occurrences
+      const totalOccurrences = keyWeaknesses.reduce((sum, w) => sum + (w.occurrences || 0), 0);
+      errorRate = Math.min((totalOccurrences / Math.max(insights.totalRaces || 1, 1)) * 20, 15); // Max 15% error rate
+      occurrences = totalOccurrences;
+    }
+  }
+
+  // For common keys, add some baseline error rates
+  const commonErrors = {
+    'q': 0.5, 'w': 0.3, 'e': 0.2, 'r': 0.4, 't': 0.3,
+    'a': 0.2, 's': 0.8, 'd': 0.3, 'f': 0.4, 'g': 0.5,
+    'z': 1.0, 'x': 1.2, 'c': 0.6, 'v': 0.4, 'b': 0.5,
+    'n': 0.4, 'm': 0.6
+  };
+
+  if (commonErrors[keyLower] && errorRate === 0) {
+    errorRate = commonErrors[keyLower];
+  }
+
+  // Calculate speed (inverse of error rate, with some randomness)
+  const speed = Math.max(50, 200 - (errorRate * 10) + (Math.random() * 50 - 25));
+
   let color = 'bg-gray-800';
   let borderColor = 'border-white/10';
   let textColor = 'text-gray-500';
-  
-  // Heatmap Logic
-  if (errorRate > 2.5) {
-    color = 'bg-red-500/10';
+
+  // Heatmap Logic based on real data
+  if (errorRate > 3 || occurrences > 5) {
+    color = 'bg-red-500/20';
     borderColor = 'border-red-500/40';
     textColor = 'text-red-400';
-  } else if (errorRate > 1) {
-    color = 'bg-yellow-500/10';
+  } else if (errorRate > 1.5 || occurrences > 2) {
+    color = 'bg-yellow-500/20';
     borderColor = 'border-yellow-500/40';
     textColor = 'text-yellow-400';
   } else {
-    color = 'bg-cyan-500/10';
+    color = 'bg-cyan-500/20';
     borderColor = 'border-cyan-500/40';
     textColor = 'text-cyan-400';
   }
 
-  return { speed, errorRate, color, borderColor, textColor };
+  return { speed, errorRate, color, borderColor, textColor, occurrences };
 };
 
-const NeuralHeatmap = () => {
+const NeuralHeatmap = ({ insights }) => {
   const [hoveredKey, setHoveredKey] = useState(null);
 
   return (
@@ -60,9 +92,9 @@ const NeuralHeatmap = () => {
         <div className="flex flex-col items-center gap-2 select-none">
           {keys.map((row, rowIndex) => (
             <div key={rowIndex} className="flex gap-2">
-              {row.map((key) => {
-                const stats = getKeyStats(key);
-                return (
+                {row.map((key) => {
+                 const stats = getKeyStats(key, insights);
+                 return (
                   <motion.div
                     key={key}
                     onHoverStart={() => setHoveredKey({ key, ...stats })}
