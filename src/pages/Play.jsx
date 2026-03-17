@@ -548,9 +548,16 @@ const Play = () => {
 
 
   const handleKeyDown = (e) => {
+    // Prevent default behavior for certain keys
     if (isNoBackspace && e.key === 'Backspace') {
       e.preventDefault();
       controls.start('shake');
+    }
+
+    // Allow Enter key for newlines, but prevent form submission
+    if (e.key === 'Enter') {
+      // Let the textarea handle the newline naturally
+      // Don't prevent default to allow newline insertion
     }
   };
 
@@ -558,10 +565,10 @@ const Play = () => {
     if (gameState !== 'active') return;
 
     const value = e.target.value;
-    
-    // Prevent deletion if no_backspace is active (for non-keyboard events)
+
+    // Prevent deletion if no_backspace is active
     if (isNoBackspace && value.length < userInput.length) {
-        return; 
+        return;
     }
 
     const currentTime = Date.now();
@@ -586,7 +593,7 @@ const Play = () => {
     }
 
     if (lastChar === targetChar) {
-      // Correct character
+      // Correct character (including newlines)
       const newIndex = currentIndex + 1;
 
       // Record History with enhanced coaching data
@@ -603,9 +610,9 @@ const Play = () => {
       }
 
       // Check for slow pair and show hint
-      const previousChar = text[currentIndex - 1] || '';
-      const currentChar = targetChar;
-      const pair = previousChar + currentChar;
+      const prevChar = text[currentIndex - 1] || '';
+      const currChar = targetChar;
+      const pair = prevChar + currChar;
       if (slowPairs[pair]) {
         setCurrentHint({
           pair: pair,
@@ -619,7 +626,7 @@ const Play = () => {
       setCurrentIndex(newIndex);
       setUserInput(value);
       setStreak(prev => prev + 1);
-      
+
       if (settings.caretAnimation) {
         controls.start('pulse');
       }
@@ -632,14 +639,14 @@ const Play = () => {
       // Error occurred
       const errorLocation = currentIndex;
       setErrorLocations(prev => [...prev, errorLocation]);
-      
+
       if (settings.errorSounds) {
         // We could add a specific error sound here, currently only visual
       }
-      
+
       const newErrors = errors + 1;
       setErrors(newErrors);
-      
+
       // Record error in history
       if (startTime) {
         historyRef.current.push({
@@ -653,7 +660,7 @@ const Play = () => {
             errorLocation: errorLocation
         });
       }
-      
+
       if (isPermadeath && newErrors >= 3) {
           setGameState('completed'); // Or failed state if supported
           alert('SYSTEM FAILURE: Permadeath Protocol Triggered (3 Errors).');
@@ -667,6 +674,7 @@ const Play = () => {
         controls.start('shake');
       }
     } else {
+      // Handle backspace or other modifications
       setUserInput(value);
     }
 
@@ -1048,22 +1056,23 @@ const Play = () => {
                  <div className="text-lg md:text-xl leading-relaxed font-mono mb-6 min-h-[120px] md:min-h-[150px] whitespace-pre-wrap">
                    {renderText()}
                  </div>
-                <motion.input
-                  ref={inputRef}
-                  variants={inputVariants}
-                  animate={controls}
-                  onKeyDown={handleKeyDown}
-                  type="text"
-                  value={userInput}
-                  onChange={handleInputChange}
-                  disabled={gameState !== 'active'}
-                  className="w-full p-4 md:p-6 bg-base-content/5 border border-base-content/10 rounded-xl text-base-content placeholder-gray-500 focus:outline-none text-lg md:text-xl font-mono touch-manipulation"
-                  placeholder={gameState === 'active' ? "Start typing..." : "Race completed!"}
-                  autoComplete="off"
-                  autoCorrect="off"
-                  autoCapitalize="off"
-                  spellCheck="false"
-                />
+                 <motion.textarea
+                   ref={inputRef}
+                   variants={inputVariants}
+                   animate={controls}
+                   onKeyDown={handleKeyDown}
+                   value={userInput}
+                   onChange={handleInputChange}
+                   disabled={gameState !== 'active'}
+                   className="w-full p-4 md:p-6 bg-base-content/5 border border-base-content/10 rounded-xl text-base-content placeholder-gray-500 focus:outline-none text-lg md:text-xl font-mono touch-manipulation resize-none"
+                   placeholder={gameState === 'active' ? "Start typing..." : "Race completed!"}
+                   autoComplete="off"
+                   autoCorrect="off"
+                   autoCapitalize="off"
+                   spellCheck="false"
+                   rows="3"
+                   style={{ minHeight: '60px' }}
+                 />
               </div>
 
               {gameState === 'completed' && (
