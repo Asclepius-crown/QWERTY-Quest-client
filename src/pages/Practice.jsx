@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Target, RotateCcw, Award, Settings, Keyboard, Zap, ChevronRight, Play, Brain, BookOpen } from 'lucide-react';
+import { Target, RotateCcw, Award, Settings, Keyboard, Zap, ChevronRight, Play, Brain, BookOpen, AlertTriangle } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import VirtualKeyboard from '../components/VirtualKeyboard';
 import { useAuth } from '../contexts/AuthContext';
@@ -39,21 +38,25 @@ const Practice = () => {
   // Coaching integration
   const [coachingMode, setCoachingMode] = useState(false);
   const [coachingInsights, setCoachingInsights] = useState(null);
-  const [customPracticeText, setCustomPracticeText] = useState('');
+  const [coachingError, setCoachingError] = useState(null);
   const [generating, setGenerating] = useState(false);
 
   // Load coaching insights
   const loadCoachingInsights = async () => {
     try {
+      setCoachingError(null);
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/coaching/insights?period=30`, {
         credentials: 'include'
       });
       if (response.ok) {
         const data = await response.json();
         setCoachingInsights(data);
+      } else {
+        setCoachingError('Failed to load coaching insights.');
       }
     } catch (err) {
       console.error('Failed to load coaching insights:', err);
+      setCoachingError('Failed to load coaching insights. Please try again.');
     }
   };
 
@@ -78,7 +81,6 @@ const Practice = () => {
 
       if (response.ok) {
         const data = await response.json();
-        setCustomPracticeText(data.practiceText);
         setCoachingMode(true);
         
         // Create a custom drill from the generated text
@@ -89,9 +91,12 @@ const Practice = () => {
         };
         setActiveDrill(customDrill);
         reset();
+      } else {
+        setCoachingError('Failed to generate practice text.');
       }
     } catch (err) {
       console.error('Failed to generate practice text:', err);
+      setCoachingError('Failed to generate practice text. Please try again.');
     } finally {
       setGenerating(false);
     }
@@ -133,6 +138,31 @@ const Practice = () => {
     if (isFinished) return;
 
     const value = e.target.value;
+    const prevLength = input.length;
+
+    if (value.length < prevLength) {
+      // Backspace
+      setInput(value);
+      if (currentIndex > 0) {
+        setCurrentIndex(prev => prev - 1);
+        // Recalculate WPM
+        if (startTime) {
+          const timeElapsed = (Date.now() - startTime) / 60000;
+          const newWpm = Math.round((currentIndex / 5) / timeElapsed);
+          setWpm(newWpm === Infinity ? 0 : newWpm);
+        }
+      }
+      // Recalculate accuracy
+      const totalKeystrokes = currentIndex + errors;
+      setAccuracy(totalKeystrokes > 0 ? Math.round((currentIndex / totalKeystrokes) * 100) : 100);
+      return;
+    }
+
+    if (value.length > prevLength + 1) {
+      // Pasted or multiple chars, ignore
+      return;
+    }
+
     const char = value.slice(-1);
     const targetChar = activeDrill.text[currentIndex];
 
@@ -162,11 +192,9 @@ const Practice = () => {
         setIsFinished(true);
       }
     } else {
-      // Incorrect
+      // Incorrect - don't add to input
       setIsErrorKey(true);
       setErrors(prev => prev + 1);
-      // Don't advance cursor (strict mode style) or optionally do
-      // For practice, let's block progress until correct
     }
 
     // Calc Accuracy
@@ -302,6 +330,17 @@ const Practice = () => {
                           <BookOpen className="w-4 h-4" />
                         )}
                         Generate Practice
+                      </button>
+                    </div>
+                  ) : coachingError ? (
+                    <div className="text-center py-4">
+                      <AlertTriangle className="w-8 h-8 text-red-400 mx-auto mb-2" />
+                      <div className="text-sm text-red-400 mb-2">{coachingError}</div>
+                      <button
+                        onClick={loadCoachingInsights}
+                        className="text-xs text-primary hover:underline"
+                      >
+                        Retry
                       </button>
                     </div>
                   ) : (

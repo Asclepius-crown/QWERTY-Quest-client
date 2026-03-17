@@ -1,26 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Brain, Target, TrendingUp, BookOpen, Zap, AlertTriangle, Award, Activity, ChevronRight, Play, RefreshCw } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import Navbar from '../components/Navbar';
-import NeuralHeatmap from '../components/NeuralHeatmap';
 
 const Coaching = () => {
-  const { user } = useAuth();
   const [profile, setProfile] = useState(null);
   const [insights, setInsights] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [selectedPeriod, setSelectedPeriod] = useState('30');
   const [practiceText, setPracticeText] = useState('');
   const [generating, setGenerating] = useState(false);
 
-  useEffect(() => {
-    loadCoachingData();
-  }, [selectedPeriod]);
-
-  const loadCoachingData = async () => {
+  const loadCoachingData = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       const [profileRes, insightsRes] = await Promise.all([
         fetch(`${import.meta.env.VITE_API_BASE_URL}/coaching/profile`, {
           credentials: 'include'
@@ -41,10 +34,15 @@ const Coaching = () => {
       }
     } catch (err) {
       console.error('Failed to load coaching data:', err);
+      setError('Failed to load coaching data. Please try again.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedPeriod]);
+
+  useEffect(() => {
+    loadCoachingData();
+  }, [loadCoachingData]);
 
   const generatePracticeText = async (weaknesses) => {
     setGenerating(true);
@@ -62,9 +60,12 @@ const Coaching = () => {
       if (response.ok) {
         const data = await response.json();
         setPracticeText(data.practiceText);
+      } else {
+        setError('Failed to generate practice text.');
       }
     } catch (err) {
       console.error('Failed to generate practice text:', err);
+      setError('Failed to generate practice text. Please try again.');
     } finally {
       setGenerating(false);
     }
@@ -95,6 +96,27 @@ const Coaching = () => {
         <Navbar />
         <div className="pt-24 flex items-center justify-center min-h-[50vh]">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-base-dark text-base-content">
+        <Navbar />
+        <div className="pt-24 flex items-center justify-center min-h-[50vh]">
+          <div className="text-center">
+            <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold mb-4">Oops! Something went wrong</h2>
+            <p className="text-base-muted mb-6">{error}</p>
+            <button
+              onClick={loadCoachingData}
+              className="bg-primary hover:bg-primary-hover text-white py-3 px-6 rounded-lg font-bold transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -137,7 +159,7 @@ const Coaching = () => {
                     <div className="flex items-center justify-between">
                       <span className="text-base-muted">Skill Level</span>
                       <span className={`px-3 py-1 rounded-full text-sm font-bold ${getSkillLevelColor(profile.profile.skillLevel)}`}>
-                        {profile.profile.skillLevel?.toUpperCase()}
+                        {(profile.profile.skillLevel || 'novice').toUpperCase()}
                       </span>
                     </div>
 
@@ -264,9 +286,9 @@ const Coaching = () => {
                           </span>
                         </div>
                         <p className="text-base-muted text-sm mb-3">{rec.description}</p>
-                        <div className="text-xs text-primary font-mono bg-primary/10 px-2 py-1 rounded inline-block">
-                          {rec.practiceType?.replace(/_/g, ' ').toUpperCase()}
-                        </div>
+                         <div className="text-xs text-primary font-mono bg-primary/10 px-2 py-1 rounded inline-block">
+                           {rec.practiceType ? rec.practiceType.replace(/_/g, ' ').toUpperCase() : 'GENERAL'}
+                         </div>
                       </div>
                     ))}
                   </div>
