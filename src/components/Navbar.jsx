@@ -78,9 +78,9 @@ const Navbar = () => {
           <div className="p-2 bg-primary/20 rounded-lg group-hover:bg-primary/40 transition-colors border border-primary/50">
             <Keyboard className="w-6 h-6 text-primary-glow" />
           </div>
-          <span className="text-xl font-bold tracking-wider text-base-content group-hover:text-primary-glow transition-colors">
-            TYPE<span className="text-primary">MASTER</span>
-          </span>
+<span className="text-xl font-bold tracking-wider text-base-content group-hover:text-primary-glow transition-colors">
+  QWERTY <span className="text-primary">QUEST</span>
+</span>
         </Link>
 
         {/* Desktop Links */}
