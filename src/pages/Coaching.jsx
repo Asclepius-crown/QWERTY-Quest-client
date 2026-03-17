@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Brain, Target, TrendingUp, BookOpen, Zap, AlertTriangle, Award, Activity, ChevronRight, Play, RefreshCw } from 'lucide-react';
+import Navbar from '../components/Navbar';
 
 const Coaching = () => {
   const [profile, setProfile] = useState(null);
