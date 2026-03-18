@@ -34,6 +34,7 @@ const Play = () => {
   const isFog = modifiers.includes('fog');
   const isNoBackspace = modifiers.includes('no_backspace');
   const isPermadeath = modifiers.includes('permadeath');
+  const isSolo = location.state?.isSolo || false;
 
   const [mode, setMode] = useState(location.state?.mode || 'solo');
   const [difficulty, setDifficulty] = useState('medium');
@@ -414,7 +415,8 @@ const Play = () => {
             keyTransitionTimes,
             errorLocations,
             correctionAttempts
-          }
+          },
+          isSoloRanked: mode === 'ranked' && isSolo
         })
       });
 
@@ -430,14 +432,78 @@ const Play = () => {
       }
 
       console.log('saveResults: Race saved successfully');
+
+      // For solo ranked, set results from server
+      if (mode === 'ranked' && isSolo && responseData.eloChanges) {
+        setRaceResults({
+          winner: responseData.isWin ? user.id : null,
+          isDraw: false,
+          participants: [{
+            userId: user.id,
+            wpm,
+            accuracy,
+            errors
+          }],
+          eloChanges: responseData.eloChanges
+        });
+      }
     } catch (err) {
       console.error('Failed to save results:', err);
     }
-  }, [user, timeLeft, textId, wpm, accuracy, errors, mode, checkAchievements, keyTransitionTimes, errorLocations, correctionAttempts]);
+  }, [user, timeLeft, textId, wpm, accuracy, errors, mode, checkAchievements, keyTransitionTimes, errorLocations, correctionAttempts, isSolo]);
+
+  const calculateSoloRankedResults = React.useCallback(async () => {
+    if (!user || mode !== 'ranked' || !isSolo) return;
+
+    try {
+      // Fetch tier averages
+      const tierResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/races/leaderboard/tier-averages?rank=${location.state?.rank || 'Bronze'}`, {
+        credentials: 'include'
+      });
+      if (!tierResponse.ok) throw new Error('Failed to fetch tier averages');
+
+      const { avgWpm, avgAccuracy } = await tierResponse.json();
+
+      // Determine win/loss
+      const isWin = (wpm >= avgWpm) && (accuracy >= 90);
+
+      // Simulate race results structure
+      const results = {
+        winner: isWin ? user.id : null,
+        isDraw: false,
+        participants: [{
+          userId: user.id,
+          wpm,
+          accuracy,
+          errors
+        }],
+        eloChanges: [] // Will be calculated server-side
+      };
+
+      setRaceResults(results);
+    } catch (err) {
+      console.error('Failed to calculate solo ranked results:', err);
+      // Fallback: treat as solo race
+      setRaceResults({
+        winner: user.id,
+        isDraw: false,
+        participants: [{
+          userId: user.id,
+          wpm,
+          accuracy,
+          errors
+        }]
+      });
+    }
+  }, [user, mode, isSolo, wpm, accuracy, errors, location.state?.rank]);
 
   useEffect(() => {
     if (gameState === 'completed' && user) {
       if (mode === 'solo' || mode === 'github') {
+        saveResults();
+      } else if (mode === 'ranked' && isSolo) {
+        // Solo ranked: calculate results locally
+        calculateSoloRankedResults();
         saveResults();
       } else if ((mode === 'quick-race' || mode === 'ranked') && raceId && socket && user) {
         const timeTaken = 60 - timeLeft;
@@ -458,7 +524,7 @@ const Play = () => {
         });
       }
     }
-  }, [gameState, mode, raceId, socket, user, wpm, accuracy, errors, timeLeft, saveResults]);
+  }, [gameState, mode, raceId, socket, user, wpm, accuracy, errors, timeLeft, saveResults, isSolo, calculateSoloRankedResults]);
 
   const startGame = async () => {
     setUserInput('');
@@ -521,6 +587,23 @@ const Play = () => {
       }
       setGameState('active');
       setStartTime(Date.now());
+    } else if (mode === 'ranked' && isSolo) {
+      setLoading(true);
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/texts/random?difficulty=medium`); // Use medium for ranked
+        if (!response.ok) throw new Error('Failed to fetch text');
+        const data = await response.json();
+        setText(data.text.content);
+        setTextId(data.text._id);
+        setLanguage('plain');
+        setGameState('active');
+        setStartTime(Date.now());
+      } catch (err) {
+        console.error(err);
+        alert('Failed to load text. Please try again.');
+      } finally {
+        setLoading(false);
+      }
     } else if (mode === 'quick-race') {
       if (user && socket) {
         socket.emit('join-queue', { userId: user.id });
