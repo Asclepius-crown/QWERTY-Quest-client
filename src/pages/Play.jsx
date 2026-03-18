@@ -395,11 +395,9 @@ const Play = () => {
   }, [currentIndex, errors, startTime, raceId, socket, user]);
 
   const saveResults = React.useCallback(async () => {
-    if (!user) {
-      console.log('saveResults: No user logged in, skipping save');
-      return;
-    }
+    if (!user) return;
     try {
+      const timeTaken = duration - timeLeft;
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/races`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
