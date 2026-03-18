@@ -395,11 +395,11 @@ const Play = () => {
 
   const saveResults = React.useCallback(async () => {
     if (!user) {
+      console.log('saveResults: No user logged in, skipping save');
       return;
     }
     try {
-      const timeTaken = 60 - timeLeft;
-      await fetch(`${import.meta.env.VITE_API_BASE_URL}/races`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/races`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -418,13 +418,18 @@ const Play = () => {
         })
       });
 
-      checkAchievements({
-        mode,
-        wpm: wpm || 0,
-        accuracy: accuracy || 0,
-        duration: 60 - timeLeft
-      });
+      if (!response.ok) {
+        console.error('saveResults: Failed to save race, status:', response.status);
+        if (response.status === 401) {
+          console.log('saveResults: User not authenticated');
+        } else if (response.status === 500) {
+          console.log('saveResults: Server error');
+        }
+        // Don't throw, just log
+        return;
+      }
 
+      console.log('saveResults: Race saved successfully');
     } catch (err) {
       console.error('Failed to save results:', err);
     }

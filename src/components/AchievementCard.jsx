@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, Check, Sparkles } from 'lucide-react';
 import { playHoverSound, RARITY } from '../contexts/AchievementContext';
@@ -26,8 +26,13 @@ const AchievementCard = ({ achievement, progress, isUnlocked, onClick }) => {
     setMousePosition({ x: 0, y: 0 });
   };
 
-  const Icon = achievement.icon;
-  const rarity = achievement.rarity || RARITY.COMMON;
+  const randomOffsets = useMemo(() => 
+    Array.from({length: 4}, () => ({ 
+      x: (Math.random() - 0.5) * 100, 
+      y: (Math.random() - 0.5) * 100 
+    })), 
+    []
+  );
 
   return (
     <motion.div
@@ -215,8 +220,8 @@ const AchievementCard = ({ achievement, progress, isUnlocked, onClick }) => {
                     scale: 0
                   }}
                   animate={{
-                    x: `${50 + (Math.random() - 0.5) * 100}%`,
-                    y: `${50 + (Math.random() - 0.5) * 100}%`,
+                    x: `${50 + randomOffsets[i].x}%`,
+                    y: `${50 + randomOffsets[i].y}%`,
                     opacity: 0,
                     scale: 1
                   }}
