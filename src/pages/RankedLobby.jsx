@@ -98,7 +98,7 @@ const RankedLobby = () => {
 
   // Initialize socket connection
   useEffect(() => {
-    const newSocket = io(import.meta.env.VITE_API_BASE_URL, {
+    const newSocket = io(import.meta.env.VITE_API_BASE_URL.replace('/api', ''), {
       withCredentials: true
     });
     
