@@ -11,8 +11,7 @@ import Practice from './pages/Practice';
 import Rank from './pages/Rank';
 import Settings from './pages/Settings';
 import Network from './pages/Network';
-import RankedLobby from './pages/RankedLobby';
-import Coaching from './pages/Coaching';
+import ResetPassword from './pages/ResetPassword';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -22,6 +21,7 @@ function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/how-it-works" element={<HowItWorks />} />
         <Route path="/play" element={<ProtectedRoute><Play /></ProtectedRoute>} />
         <Route path="/practice" element={<ProtectedRoute><Practice /></ProtectedRoute>} />

@@ -14,8 +14,10 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [needMfa, setNeedMfa] = useState(false);
   const [mfaToken, setMfaToken] = useState('');
-  const [savedCredentials, setSavedCredentials] = useState({ email: '', password: '' });
-  const navigate = useNavigate();
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotMessage, setForgotMessage] = useState('');
   const { login } = useAuth();
 
   const handleChange = (e) => {
@@ -82,6 +84,29 @@ const Login = () => {
       setError('Error during passkey login: ' + err.message);
     }
     setLoading(false);
+  };
+
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    setForgotMessage('');
+    setForgotLoading(true);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotEmail }),
+        credentials: 'include'
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setForgotMessage('Magic link sent to your email! Check your inbox.');
+      } else {
+        setForgotMessage(data.error || 'Failed to send reset link');
+      }
+    } catch (err) {
+      setForgotMessage('Network error. Please try again.');
+    }
+    setForgotLoading(false);
   };
 
   return (
@@ -190,7 +215,7 @@ const Login = () => {
                 <input type="checkbox" className="w-4 h-4 rounded border-gray-600 bg-base-navy text-primary focus:ring-primary/50" />
                 <span className="text-gray-400 group-hover:text-white transition-colors">Remember me</span>
               </label>
-              <a href="#" className="text-primary hover:text-primary-glow transition-colors">Forgot password?</a>
+              <a href="#" onClick={() => setShowForgotPassword(true)} className="text-primary hover:text-primary-glow transition-colors">Forgot password?</a>
             </div>
 
             <button
@@ -268,6 +293,64 @@ const Login = () => {
           </div>
         </div>
       </motion.div>
+
+      {/* Forgot Password Modal */}
+      {showForgotPassword && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-6">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="w-full max-w-md"
+          >
+            <div className="glass-card p-8 rounded-2xl border border-white/10 shadow-2xl">
+              <div className="text-center mb-6">
+                <h3 className="text-2xl font-bold mb-2">Reset Password</h3>
+                <p className="text-gray-400">Enter your email to receive a magic login link</p>
+              </div>
+
+              {forgotMessage && (
+                <div className={`p-3 rounded-lg mb-6 text-sm text-center ${
+                  forgotMessage.includes('sent') ? 'bg-green-500/10 border border-green-500/50 text-green-500' : 'bg-red-500/10 border border-red-500/50 text-red-500'
+                }`}>
+                  {forgotMessage}
+                </div>
+              )}
+
+              <form onSubmit={handleForgotPassword} className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-300 ml-1">Email</label>
+                  <input
+                    type="email"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    required
+                    className="block w-full px-3 py-3 bg-base-navy/50 border border-white/10 rounded-xl focus:ring-2 focus:ring-primary/50 focus:border-primary/50 text-white placeholder-gray-500 transition-all outline-none"
+                    placeholder="player@example.com"
+                  />
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotPassword(false)}
+                    className="flex-1 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-xl font-bold transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={forgotLoading}
+                    className="flex-1 py-3 bg-primary hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-bold transition-all"
+                  >
+                    {forgotLoading ? 'Sending...' : 'Send Link'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 };
