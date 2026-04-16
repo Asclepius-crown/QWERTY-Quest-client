@@ -45,7 +45,7 @@ const getKeyStats = (key, insights) => {
   let avgTime = 150;
   let occurrences = 0;
 
-  if (insights?.commonWeaknesses) {
+  if (insights?.commonWeaknesses && Array.isArray(insights.commonWeaknesses)) {
     const keyWeaknesses = insights.commonWeaknesses.filter(w =>
       w.pair?.toLowerCase().includes(keyLower) ||
       w.description?.toLowerCase().includes(keyLower)
@@ -146,7 +146,7 @@ const NeuralHeatmap = ({ insights }) => {
         <div className="flex flex-col items-center gap-1 select-none">
           {keys.map((row, rowIndex) => (
             <div key={rowIndex} className="flex gap-1">
-              {row.map((key) => {
+              {row.map((key, colIndex) => {
                 const stats = getKeyStats(key, insights);
                 const keySize = stats.isSpecial ? 
                   (key === 'Space' ? 'w-32 h-12' : key.length > 4 ? 'w-16 h-10' : 'w-12 h-10') : 
@@ -154,7 +154,7 @@ const NeuralHeatmap = ({ insights }) => {
 
                 return (
                   <motion.div
-                    key={key}
+                    key={`${key}-${rowIndex}-${colIndex}`}
                     onHoverStart={(e) => {
                       setHoveredKey({ key, ...stats });
                       setTooltipPosition({ x: e.clientX, y: e.clientY });

@@ -4,6 +4,7 @@ import { Lock, Check, Sparkles } from 'lucide-react';
 import { playHoverSound, RARITY } from '../contexts/AchievementContext';
 
 const AchievementCard = ({ achievement, progress, isUnlocked, onClick }) => {
+  const rarity = achievement.rarity;
   const [isHovered, setIsHovered] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const cardRef = useRef(null);
@@ -108,7 +109,7 @@ const AchievementCard = ({ achievement, progress, isUnlocked, onClick }) => {
               }}
               transition={{ duration: 0.3 }}
             >
-              <Icon
+              <achievement.icon
                 className="w-8 h-8"
                 style={{ color: isUnlocked ? rarity.color : '#6B7280' }}
               />

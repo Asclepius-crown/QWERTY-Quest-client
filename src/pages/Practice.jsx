@@ -62,7 +62,7 @@ const Practice = () => {
 
   // Generate personalized practice text
   const generatePersonalizedPractice = async () => {
-    if (!coachingInsights?.commonWeaknesses?.length) {
+    if (!coachingInsights?.commonWeaknesses?.length || !Array.isArray(coachingInsights.commonWeaknesses)) {
       await loadCoachingInsights();
       return;
     }
@@ -308,7 +308,7 @@ const Practice = () => {
                 <div className="glass-card p-4 rounded-xl border border-base-content/5">
                   <h3 className="text-sm font-bold text-base-muted uppercase tracking-widest mb-4">AI Coaching</h3>
                   
-                  {coachingInsights?.commonWeaknesses?.length > 0 ? (
+                  {coachingInsights?.commonWeaknesses?.length > 0 && Array.isArray(coachingInsights.commonWeaknesses) ? (
                     <div className="space-y-3">
                       <div className="text-xs text-base-muted mb-3">
                         Based on your recent performance:

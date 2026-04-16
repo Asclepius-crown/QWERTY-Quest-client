@@ -217,7 +217,7 @@ const Coaching = () => {
               </div>
 
               {/* Common Weaknesses */}
-              {insights?.commonWeaknesses && insights.commonWeaknesses.length > 0 && (
+              {insights?.commonWeaknesses && Array.isArray(insights.commonWeaknesses) && insights.commonWeaknesses.length > 0 && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}

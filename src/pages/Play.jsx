@@ -131,7 +131,7 @@ const Play = () => {
         
         // Create map of slow pairs for quick lookup
         const pairs = {};
-        data.commonWeaknesses?.forEach(weakness => {
+        data.commonWeaknesses?.forEach && Array.isArray(data.commonWeaknesses) && data.commonWeaknesses.forEach(weakness => {
           if (weakness.type === 'slowTransition' && weakness.pair) {
             pairs[weakness.pair] = {
               avgTime: weakness.averageTime,
