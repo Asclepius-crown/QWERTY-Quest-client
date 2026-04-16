@@ -12,6 +12,8 @@ import Rank from './pages/Rank';
 import Settings from './pages/Settings';
 import Network from './pages/Network';
 import ResetPassword from './pages/ResetPassword';
+import RankedLobby from './pages/RankedLobby';
+import Coaching from './pages/Coaching';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
