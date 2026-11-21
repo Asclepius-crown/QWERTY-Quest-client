@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { 
   MapPin, Calendar, Trophy, Zap, Target, Award, Clock, 
   Share2, Shield, Crown, Flame, Activity, BarChart2, Keyboard, 
   ArrowUp, History, Filter, Grid3X3, List, Lock, Unlock
 } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
 import { useAchievements, ACHIEVEMENTS, RARITY } from '../contexts/AchievementContext';
 import Navbar from '../components/Navbar';
@@ -16,6 +16,7 @@ import { getUserAvatarDisplay, isCustomAvatar } from '../config/avatars';
 import { getUserRankBadge, BADGES_SPRITE } from '../config/badges';
 
 const Profile = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { unlocked, getProgress, getCategoryProgress, totalUnlocked, totalAchievements } = useAchievements();
   const [activeTab, setActiveTab] = useState('overview');
@@ -95,11 +96,31 @@ const Profile = () => {
   const accTrend = calculateTrend('accuracy');
 
   // Chart Data
-  const chartData = history.map((race, idx) => ({
-    name: `Race ${idx + 1}`,
-    wpm: race.participants?.[0]?.wpm || 0,
-    accuracy: race.participants?.[0]?.accuracy || 0
-  }));
+  const chartData = history.map((race, idx) => {
+    const result = race.participants?.find(p => p.userId === user?.id) || race.participants?.[0] || {};
+    return {
+      name: `Race ${idx + 1}`,
+      wpm: result.wpm || 0,
+      accuracy: result.accuracy || 0
+    };
+  });
+
+  const handleShare = async () => {
+    const url = window.location.href;
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: `${user?.username || 'Player'}'s QWERTY Quest Profile`,
+          url
+        });
+      } else {
+        await navigator.clipboard.writeText(url);
+        alert('Profile link copied to clipboard');
+      }
+    } catch (err) {
+      if (err.name !== 'AbortError') alert('Could not share profile link');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-base-dark text-base-content font-sans">
@@ -156,10 +177,17 @@ const Profile = () => {
 
                 {/* Actions */}
                 <div className="flex gap-3 mt-4 md:mt-0">
-                    <button className="px-6 py-2 bg-primary hover:bg-primary-hover text-white font-bold rounded-lg transition-all flex items-center gap-2">
+                    <button
+                        onClick={() => navigate('/play', { state: { mode: 'quick-race' } })}
+                        className="px-6 py-2 bg-primary hover:bg-primary-hover text-white font-bold rounded-lg transition-all flex items-center gap-2"
+                    >
                         <Zap className="w-4 h-4" /> Quick Race
                     </button>
-                    <button className="p-2 bg-base-content/5 hover:bg-base-content/10 border border-base-content/10 rounded-lg text-base-content transition-all">
+                    <button
+                        onClick={handleShare}
+                        title="Share profile"
+                        className="p-2 bg-base-content/5 hover:bg-base-content/10 border border-base-content/10 rounded-lg text-base-content transition-all"
+                    >
                         <Share2 className="w-5 h-5" />
                     </button>
                 </div>
@@ -510,33 +538,31 @@ const Profile = () => {
                             <div className="h-64 w-full min-h-[250px]">
                                 {history.length > 0 ? (
                                     <ResponsiveContainer width="100%" height="100%">
-                                        <AreaChart data={chartData}>
+                                        <BarChart data={chartData}>
                                             <defs>
                                             <linearGradient id="colorWpm" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3}/>
-                                                <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
+                                                <stop offset="0%" stopColor="#3B82F6" stopOpacity={0.9}/>
+                                                <stop offset="100%" stopColor="#3B82F6" stopOpacity={0.4}/>
                                             </linearGradient>
                                             <linearGradient id="colorAcc" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#22C55E" stopOpacity={0.3}/>
-                                                <stop offset="95%" stopColor="#22C55E" stopOpacity={0}/>
+                                                <stop offset="0%" stopColor="#22C55E" stopOpacity={0.9}/>
+                                                <stop offset="100%" stopColor="#22C55E" stopOpacity={0.4}/>
                                             </linearGradient>
                                             </defs>
                                             <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
                                             <XAxis dataKey="name" hide />
-                                            <YAxis stroke="#ffffff50" fontSize={12} tickLine={false} axisLine={false} />
+                                            <YAxis stroke="#ffffff50" fontSize={12} tickLine={false} axisLine={false} domain={[0, 'auto']} />
                                             <Tooltip 
                                             contentStyle={{ backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: '8px' }}
                                             itemStyle={{ color: '#fff' }}
                                             />
-                                            <Area 
-                                              type="monotone" 
-                                              dataKey={chartMetric} 
-                                              stroke={chartMetric === 'wpm' ? '#3B82F6' : '#22C55E'} 
-                                              strokeWidth={3} 
-                                              fillOpacity={1} 
-                                              fill={chartMetric === 'wpm' ? 'url(#colorWpm)' : 'url(#colorAcc)'} 
+                                            <Bar
+                                              dataKey={chartMetric}
+                                              fill={chartMetric === 'wpm' ? 'url(#colorWpm)' : 'url(#colorAcc)'}
+                                              radius={[6, 6, 0, 0]}
+                                              maxBarSize={48}
                                             />
-                                        </AreaChart>
+                                        </BarChart>
                                     </ResponsiveContainer>
                                 ) : (
                                     <div className="h-full w-full flex items-center justify-center text-base-muted italic border border-dashed border-base-content/10 rounded-xl">
