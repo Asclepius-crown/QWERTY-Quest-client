@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Brain, Target, TrendingUp, BookOpen, Zap, AlertTriangle, Award, Activity, ChevronRight, Play, RefreshCw } from 'lucide-react';
 import Navbar from '../components/Navbar';
@@ -12,6 +12,7 @@ const Coaching = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('30');
   const [practiceText, setPracticeText] = useState('');
   const [generating, setGenerating] = useState(false);
+  const practiceRef = useRef(null);
 
   const loadCoachingData = useCallback(async () => {
     try {
@@ -47,6 +48,12 @@ const Coaching = () => {
     loadCoachingData();
   }, [loadCoachingData]);
 
+  useEffect(() => {
+    if (practiceText) {
+      practiceRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [practiceText]);
+
   const generatePracticeText = async (weaknesses) => {
     setGenerating(true);
     try {
@@ -64,11 +71,11 @@ const Coaching = () => {
         const data = await response.json();
         setPracticeText(data.practiceText);
       } else {
-        setError('Failed to generate practice text.');
+        alert('Failed to generate practice text.');
       }
     } catch (err) {
       console.error('Failed to generate practice text:', err);
-      setError('Failed to generate practice text. Please try again.');
+      alert('Failed to generate practice text. Please try again.');
     } finally {
       setGenerating(false);
     }
@@ -261,6 +268,42 @@ const Coaching = () => {
                 </motion.div>
               )}
 
+              {/* Practice Text */}
+              {practiceText && (
+                <motion.div
+                  ref={practiceRef}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="glass-card p-6 rounded-2xl border border-base-content/5"
+                >
+                  <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                    <BookOpen className="w-5 h-5 text-primary" />
+                    Personalized Practice
+                  </h3>
+
+                  <div className="bg-base-content/5 p-4 rounded-lg mb-4">
+                    <p className="text-base-content leading-relaxed font-mono text-sm">
+                      {practiceText}
+                    </p>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => navigator.clipboard.writeText(practiceText)}
+                      className="flex-1 bg-base-content/10 hover:bg-base-content/20 text-base-content py-2 rounded-lg font-medium transition-colors"
+                    >
+                      Copy Text
+                    </button>
+                    <button
+                      onClick={() => setPracticeText('')}
+                      className="px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg font-medium transition-colors"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+
               {/* Recommendations */}
               {insights?.recommendations && insights.recommendations.length > 0 && (
                 <motion.div
@@ -292,41 +335,6 @@ const Coaching = () => {
                          </div>
                       </div>
                     ))}
-                  </div>
-                </motion.div>
-              )}
-
-              {/* Practice Text */}
-              {practiceText && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="glass-card p-6 rounded-2xl border border-base-content/5"
-                >
-                  <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                    <BookOpen className="w-5 h-5 text-primary" />
-                    Personalized Practice
-                  </h3>
-
-                  <div className="bg-base-content/5 p-4 rounded-lg mb-4">
-                    <p className="text-base-content leading-relaxed font-mono text-sm">
-                      {practiceText}
-                    </p>
-                  </div>
-
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => navigator.clipboard.writeText(practiceText)}
-                      className="flex-1 bg-base-content/10 hover:bg-base-content/20 text-base-content py-2 rounded-lg font-medium transition-colors"
-                    >
-                      Copy Text
-                    </button>
-                    <button
-                      onClick={() => setPracticeText('')}
-                      className="px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg font-medium transition-colors"
-                    >
-                      Clear
-                    </button>
                   </div>
                 </motion.div>
               )}
