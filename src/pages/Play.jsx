@@ -542,12 +542,12 @@ const Play = () => {
     if (mode === 'solo' || mode === 'chaos') {
       setLoading(true);
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/texts/random?difficulty=${difficulty}`);
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/texts/random?difficulty=${difficulty}&duration=${duration}`);
         if (!response.ok) throw new Error('Failed to fetch text');
         const data = await response.json();
         setText(data.text.content);
         setTextId(data.text._id);
-        setLanguage('plain');
+        setLanguage(data.text.language || 'plain');
         setGameState('active');
         setStartTime(Date.now());
       } catch (err) {
