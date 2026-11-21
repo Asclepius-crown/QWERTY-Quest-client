@@ -10,6 +10,12 @@ const keys = [
   ['Ctrl', 'Alt', 'Space', 'Alt', 'Ctrl']
 ];
 
+// Key widths in "key units" so the whole board scales with its container
+const KEY_WIDTHS = {
+  '⌫': 1.2, '↵': 1.2, Tab: 1.2, Caps: 1.2, Ctrl: 1.2, Alt: 1.2,
+  Shift: 1.6, Space: 3.2
+};
+
 const getKeyStats = (key, insights) => {
   // Handle special keys
   const specialKeys = ['Tab', 'Caps', 'Shift', 'Ctrl', 'Alt', '⌫', '↵', 'Space'];
@@ -114,7 +120,7 @@ const NeuralHeatmap = ({ insights }) => {
 
   return (
     <div className="w-full" onMouseMove={handleMouseMove}>
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 gap-4 max-w-3xl mx-auto">
         <div>
           <h3 className="text-2xl font-bold flex items-center gap-2">
             <Activity className="w-6 h-6 text-primary" />
@@ -142,15 +148,19 @@ const NeuralHeatmap = ({ insights }) => {
         </div>
       </div>
 
-      <div className="relative glass-card p-6 md:p-8 rounded-2xl border border-white/5 bg-black/40 overflow-hidden">
-        <div className="flex flex-col items-center gap-1 select-none">
+      <div
+        className="relative glass-card p-3 sm:p-6 md:p-8 rounded-2xl border border-white/5 bg-black/40 overflow-hidden max-w-3xl mx-auto"
+        style={{ containerType: 'inline-size', '--u': 'calc(100cqw / 15.4)' }}
+      >
+        <div
+          className="flex flex-col items-center select-none"
+          style={{ gap: 'calc(var(--u) * 0.08)' }}
+        >
           {keys.map((row, rowIndex) => (
-            <div key={rowIndex} className="flex gap-1">
+            <div key={rowIndex} className="flex" style={{ gap: 'calc(var(--u) * 0.08)' }}>
               {row.map((key, colIndex) => {
                 const stats = getKeyStats(key, insights);
-                const keySize = stats.isSpecial ? 
-                  (key === 'Space' ? 'w-32 h-12' : key.length > 4 ? 'w-16 h-10' : 'w-12 h-10') : 
-                  'w-8 h-10 md:w-10 md:h-12';
+                const widthUnits = stats.isSpecial ? (KEY_WIDTHS[key] || 1.2) : 1;
 
                 return (
                   <motion.div
@@ -162,10 +172,17 @@ const NeuralHeatmap = ({ insights }) => {
                     onHoverEnd={() => setHoveredKey(null)}
                     whileHover={{ scale: 1.05, zIndex: 10 }}
                     whileTap={{ scale: 0.95 }}
+                    style={{
+                      width: `calc(var(--u) * ${widthUnits})`,
+                      height: 'calc(var(--u) * 1.15)',
+                      fontSize: stats.isSpecial
+                        ? 'clamp(7px, calc(var(--u) * 0.3), 13px)'
+                        : 'clamp(9px, calc(var(--u) * 0.42), 17px)'
+                    }}
                     className={`
-                      ${keySize} rounded-md border flex items-center justify-center relative cursor-pointer transition-all duration-200
+                      rounded-md border flex items-center justify-center relative cursor-pointer transition-all duration-200
                       ${stats.color} ${stats.borderColor} hover:shadow-lg hover:shadow-primary/20
-                      ${stats.isSpecial ? 'text-xs' : 'text-sm md:text-base font-mono font-bold'}
+                      ${stats.isSpecial ? '' : 'font-mono font-bold'}
                       ${stats.textColor}
                     `}
                   >
