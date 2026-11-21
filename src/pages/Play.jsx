@@ -429,6 +429,7 @@ const Play = () => {
         return;
       }
 
+      const responseData = await response.json();
       console.log('saveResults: Race saved successfully');
 
       // For solo ranked, set results from server
