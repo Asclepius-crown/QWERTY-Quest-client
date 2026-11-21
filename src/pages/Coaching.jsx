@@ -232,7 +232,7 @@ const Coaching = () => {
                         <div>
                           <div className="font-medium text-base-content">{weakness.description}</div>
                           <div className="text-sm text-base-muted">
-                            Occurred {weakness.occurrences} times
+                            Occurred {weakness.occurrences} {weakness.occurrences === 1 ? 'time' : 'times'}
                           </div>
                         </div>
                         <div className={`px-2 py-1 rounded text-xs font-bold ${
