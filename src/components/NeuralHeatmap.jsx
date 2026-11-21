@@ -149,7 +149,7 @@ const NeuralHeatmap = ({ insights }) => {
       </div>
 
       <div
-        className="relative glass-card p-3 sm:p-6 md:p-8 rounded-2xl border border-white/5 bg-black/40 overflow-hidden max-w-3xl mx-auto"
+        className="relative glass-card p-3 sm:p-5 rounded-2xl border border-white/5 bg-black/40 overflow-hidden max-w-3xl mx-auto"
         style={{ containerType: 'inline-size', '--u': 'calc(100cqw / 15.4)' }}
       >
         <div

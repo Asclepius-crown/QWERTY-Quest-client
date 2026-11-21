@@ -186,7 +186,8 @@ const Coaching = () => {
                 )}
               </div>
 
-              {/* Neural Heatmap is rendered full-width below the grid */}
+              {/* Neural Heatmap */}
+              <NeuralHeatmap insights={insights} />
             </div>
 
             {/* Main Analysis Area */}
@@ -362,11 +363,6 @@ const Coaching = () => {
                   </div>
                 </motion.div>
               )}
-            </div>
-
-            {/* Neural Heatmap */}
-            <div className="lg:col-span-3">
-              <NeuralHeatmap insights={insights} />
             </div>
           </div>
         </div>
