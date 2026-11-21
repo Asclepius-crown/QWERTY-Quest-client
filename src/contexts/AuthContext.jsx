@@ -195,7 +195,7 @@ export const AuthProvider = ({ children }) => {
   return (
     <AuthContext.Provider value={{
       isLoggedIn,
-      user,
+      user: user && { ...user, id: user.id || user._id },
       loading,
       login,
       signup,
