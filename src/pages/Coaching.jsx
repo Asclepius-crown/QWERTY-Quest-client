@@ -316,9 +316,9 @@ const Coaching = () => {
                     AI Recommendations
                   </h3>
 
-                  <div className="space-y-4">
+                  <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-2">
                     {insights.recommendations.map((rec, idx) => (
-                      <div key={idx} className={`p-4 rounded-lg border ${getPriorityColor(rec.priority)}`}>
+                      <div key={idx} className={`flex flex-col w-[calc(50%-0.5rem)] min-w-[240px] shrink-0 snap-start p-4 rounded-lg border ${getPriorityColor(rec.priority)}`}>
                         <div className="flex items-start justify-between mb-2">
                           <h4 className="font-bold text-base-content">{rec.title}</h4>
                           <span className={`px-2 py-1 rounded text-xs font-bold ${
@@ -330,12 +330,15 @@ const Coaching = () => {
                           </span>
                         </div>
                         <p className="text-base-muted text-sm mb-3">{rec.description}</p>
-                         <div className="text-xs text-primary font-mono bg-primary/10 px-2 py-1 rounded inline-block">
+                         <div className="mt-auto self-start text-xs text-primary font-mono bg-primary/10 px-2 py-1 rounded inline-block">
                            {rec.practiceType ? rec.practiceType.replace(/_/g, ' ').toUpperCase() : 'GENERAL'}
                          </div>
                       </div>
                     ))}
                   </div>
+                  {insights.recommendations.length > 2 && (
+                    <div className="text-xs text-base-muted mt-1">Scroll to see more recommendations →</div>
+                  )}
                 </motion.div>
               )}
 
